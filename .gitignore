@@ -1,0 +1,6 @@
+# Mission-owned folders: they belong to whichever mission uses hotload, never to the tool.
+# Running hotload straight from this folder must not commit mission scripts or mailbox traffic.
+/user-*/
+
+# Local working space: specs and plans before they become a .tracker/ spec.
+/.drafts/
