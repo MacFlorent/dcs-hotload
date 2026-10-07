@@ -28,7 +28,9 @@ cmd_run() {
       *) file="$1"; shift ;;
     esac
   done
-  [ -d "$root/user-inbox" ] && [ -d "$root/user-outbox" ] || die "no user-inbox/ and user-outbox/ under $root (mailbox off?)"
+  if [ ! -d "$root/user-inbox" ] || [ ! -d "$root/user-outbox" ]; then
+    die "no user-inbox/ and user-outbox/ under $root (mailbox off?)"
+  fi
   [ -n "$code" ] || [ -n "$file" ] || die "give -e 'LUA' or a .lua file"
   local inbox="$root/user-inbox/$name.lua" outbox="$root/user-outbox/$name.lua"
   [ -e "$inbox" ] || [ -e "$outbox" ] && die "$name already in the mailbox; pick another --name or delete it"
