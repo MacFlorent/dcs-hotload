@@ -4,3 +4,6 @@
 
 # Local working space: specs and plans before they become a .tracker/ spec.
 /.drafts/
+
+# The release package that .github/scripts/package.sh builds.
+/dist/

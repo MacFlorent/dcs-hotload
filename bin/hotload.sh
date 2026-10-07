@@ -16,7 +16,8 @@ die() { echo "hotload.sh: $*" >&2; exit 3; }
 default_log() { echo "${USERPROFILE:-$HOME}/Saved Games/DCS/Logs/dcs.log"; }
 
 cmd_run() {
-  local root="${HOTLOAD_ROOT:-./dcs-hotload}" name="c$(date +%s)$$" timeout=600 keep=0 code="" file=""
+  local root="${HOTLOAD_ROOT:-./dcs-hotload}" name timeout=600 keep=0 code="" file=""
+  name="c$(date +%s)$$"
   while [ $# -gt 0 ]; do
     case "$1" in
       --root) root="$2"; shift 2 ;;
@@ -27,7 +28,9 @@ cmd_run() {
       *) file="$1"; shift ;;
     esac
   done
-  [ -d "$root/user-inbox" ] && [ -d "$root/user-outbox" ] || die "no user-inbox/ and user-outbox/ under $root (mailbox off?)"
+  if [ ! -d "$root/user-inbox" ] || [ ! -d "$root/user-outbox" ]; then
+    die "no user-inbox/ and user-outbox/ under $root (mailbox off?)"
+  fi
   [ -n "$code" ] || [ -n "$file" ] || die "give -e 'LUA' or a .lua file"
   local inbox="$root/user-inbox/$name.lua" outbox="$root/user-outbox/$name.lua"
   [ -e "$inbox" ] || [ -e "$outbox" ] && die "$name already in the mailbox; pick another --name or delete it"

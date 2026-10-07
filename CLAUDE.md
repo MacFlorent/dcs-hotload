@@ -43,3 +43,4 @@ On Windows without `lua5.1` on `PATH`: `"/c/Program Files (x86)/Lua/5.1/lua.exe"
 | add or change a test | `CONTRIBUTING.md`; `test/dcs-stub.lua` |
 | open a pull request, or open, update or archive a piece of work | `CONTRIBUTING.md` |
 | edit a guidance file | `CONTRIBUTING.md` — how guidance is written |
+| cut a release, or change what a release ships | `CONTRIBUTING.md` |

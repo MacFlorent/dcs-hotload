@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
@@ -29,3 +30,12 @@ jobs:
 
       - name: luacheck
         run: luacheck .
+
+      - name: ShellCheck
+        run: shellcheck bin/hotload.sh .github/scripts/package.sh
+
+      # Builds the zip a release would publish, so a broken package shows before any tag.
+      - name: Package
+        run: |
+          bash .github/scripts/package.sh
+          zipinfo dist/dcs-hotload-*.zip | grep -E '^-rwxr-xr-x .* dcs-hotload/bin/hotload\.sh$'
