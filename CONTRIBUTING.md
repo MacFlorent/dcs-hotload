@@ -24,6 +24,8 @@ shell client. This file holds every rule for changing it; `CLAUDE.md` only point
 | `test/` | the offline suite: plain Lua 5.1 against a stub DCS |
 | `.tracker/` | work in progress and work done, and `IDEAS.md` — see *Tracking work* |
 | `.drafts/` | local working space, git-ignored |
+| `.github/scripts/package.sh` | builds the release package into `dist/` — see *Releasing* |
+| `dist/` | the release package, git-ignored |
 | `CHANGELOG.md` | what each version changed |
 
 ## Commands
@@ -146,10 +148,22 @@ how whoever updates one knows whether it is worth it.
 
 ## Releasing
 
-1. On a `release/<x.y.z>` branch, set `Hotload.version` and rename `[Unreleased]` in
+A release is a GitHub release holding `dcs-hotload-<x.y.z>.zip`: a single `dcs-hotload/` folder
+with `dcs-hotload.lua`, `README.md`, `LICENSE.md`, `bin/`, `examples/` and `skills/` — what a
+mission needs, extracted into its folder. `.github/scripts/package.sh` builds it from an allowlist,
+so a new file reaches missions only once it is named there. `LICENSE.md` ships because the license
+requires a copy in every redistribution.
+
+1. Optionally, check the package first: run the *Release* workflow by hand from the Actions tab and
+   download the zip it attaches, or run `bash .github/scripts/package.sh` and look in
+   `dist/dcs-hotload/` (Git Bash has no `zip`, so locally only the folder is built).
+2. On a `release/<x.y.z>` branch, set `Hotload.version` and rename `[Unreleased]` in
    `CHANGELOG.md` to `[x.y.z] — YYYY-MM-DD`, with a fresh `[Unreleased]` above it. Pull request to
    `main`.
-2. Tag `v<x.y.z>` on `main` once merged. A tag is never moved; a wrong release is fixed by the next.
+3. Tag `v<x.y.z>` on `main` once merged, and push the tag. The *Release* workflow runs the tests,
+   checks that the tag matches `Hotload.version`, is on `main` and has its `CHANGELOG.md` section,
+   then publishes the release with that section as its notes. A tag is never moved; a wrong
+   release is fixed by the next.
 
 ## Writing guidance
 
