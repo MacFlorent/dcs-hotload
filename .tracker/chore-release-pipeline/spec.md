@@ -1,6 +1,6 @@
 # Release pipeline
 
-Status: in-progress
+Status: done
 
 ## Problem
 
