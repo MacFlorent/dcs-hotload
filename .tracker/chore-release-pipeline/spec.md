@@ -72,7 +72,7 @@ Triggers: `push` of a `v*` tag, and `workflow_dispatch` (dry run).
 
 `ci.yml` gains a ShellCheck step over `bin/hotload.sh` and `.github/scripts/package.sh`
 (ShellCheck is preinstalled on the runner), and a step that runs `package.sh` and checks the zip
-holds `dcs-hotload/bin/hotload.sh`: the zip cannot be built locally (Git Bash has no `zip`), and
+holds an executable `dcs-hotload/bin/hotload.sh`: the zip cannot be built locally (Git Bash has no `zip`), and
 this proves it on every pull request rather than only after merge. A finding in `bin/hotload.sh` is fixed in its own
 commit, with a changelog entry if its behaviour changes.
 

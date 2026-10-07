@@ -38,4 +38,4 @@ jobs:
       - name: Package
         run: |
           bash .github/scripts/package.sh
-          zipinfo dist/dcs-hotload-*.zip | grep -E ' dcs-hotload/bin/hotload\.sh$'
+          zipinfo dist/dcs-hotload-*.zip | grep -E '^-rwxr-xr-x .* dcs-hotload/bin/hotload\.sh$'
