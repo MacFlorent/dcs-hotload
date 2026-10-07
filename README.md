@@ -11,18 +11,20 @@ Scripts can wait in sim time. No external executable.
 
 ## Setup
 
-1. **Unlock the mission scripting environment.** In `<DCS install>\Scripts\MissionScripting.lua`,
+1. **Get it.** Download `dcs-hotload-<version>.zip` from the repository's GitHub releases and
+   extract it into the mission folder: it holds a single `dcs-hotload/` folder.
+2. **Unlock the mission scripting environment.** In `<DCS install>\Scripts\MissionScripting.lua`,
    comment out `sanitizeModule('io')` and `sanitizeModule('lfs')`. The edit is install-wide, affects
    multiplayer integrity checks, and DCS updates revert it; dcs-hotload says so on screen when it
    is missing.
-2. **Load it at mission start**, from a `DO SCRIPT` trigger or a script the mission already
+3. **Load it at mission start**, from a `DO SCRIPT` trigger or a script the mission already
    embeds:
 
    ```lua
-   dofile([[D:\path\to\dcs-hotload\dcs-hotload.lua]])
+   dofile([[D:\path\to\mission\dcs-hotload\dcs-hotload.lua]])
    ```
 
-3. `dcs-hotload 0.1.0 ready` shows on screen (and `HOTLOAD: ready` in `dcs.log`); open
+4. `dcs-hotload <version> ready` shows on screen (and `HOTLOAD: ready` in `dcs.log`); open
    **F10 → Hotload**.
 
 ## Folders
@@ -139,10 +141,7 @@ not need it. To use it in one mission, see [skills/README.md](skills/README.md).
 
 ## Development
 
-Changing hotload: [CONTRIBUTING.md](CONTRIBUTING.md) — the offline tests (`lua5.1 test/run.lua`),
-the in-DCS self-tests in `examples/`, the steps for a change, how work is tracked, and
-versioning. What changed: [CHANGELOG.md](CHANGELOG.md).
-
-## License
-
-[Apache License 2.0](LICENSE.md). `test/luaunit.lua` is vendored under its own BSD license.
+Changing hotload: `CONTRIBUTING.md`, in the repository — the offline tests
+(`lua5.1 test/run.lua`), the in-DCS self-tests in `examples/`, the steps for a change, how work is
+tracked, versioning and releasing. What changed: `CHANGELOG.md`, in the repository, and each
+release's notes.
