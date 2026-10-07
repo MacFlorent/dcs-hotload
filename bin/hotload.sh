@@ -16,7 +16,8 @@ die() { echo "hotload.sh: $*" >&2; exit 3; }
 default_log() { echo "${USERPROFILE:-$HOME}/Saved Games/DCS/Logs/dcs.log"; }
 
 cmd_run() {
-  local root="${HOTLOAD_ROOT:-./dcs-hotload}" name="c$(date +%s)$$" timeout=600 keep=0 code="" file=""
+  local root="${HOTLOAD_ROOT:-./dcs-hotload}" name timeout=600 keep=0 code="" file=""
+  name="c$(date +%s)$$"
   while [ $# -gt 0 ]; do
     case "$1" in
       --root) root="$2"; shift 2 ;;
