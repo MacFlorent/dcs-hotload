@@ -58,11 +58,11 @@ jobs:
             echo "::warning::CHANGELOG.md has no [$VERSION] section yet: expected before the release pull request"
           fi
 
-      # GitHub zips every artifact, so the download is a zip holding the release zip.
-      - uses: actions/upload-artifact@v4
+      # Uploaded as is (archive: false), so the download is the release zip itself, named after it.
+      - uses: actions/upload-artifact@v7
         with:
-          name: dcs-hotload-${{ steps.version.outputs.version }}
           path: dist/dcs-hotload-${{ steps.version.outputs.version }}.zip
+          archive: false
           if-no-files-found: error
 
       - name: Publish
