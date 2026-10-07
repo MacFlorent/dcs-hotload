@@ -30,7 +30,7 @@ jobs:
         id: version
         run: |
           code_version=$(sed -n 's/^Hotload\.version = "\([^"]*\)".*/\1/p' dcs-hotload.lua)
-          if [ "$GITHUB_REF_TYPE" = tag ]; then
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
             version="${GITHUB_REF_NAME#v}"
             if [ "$version" != "$code_version" ]; then
               echo "::error::tag $GITHUB_REF_NAME does not match Hotload.version $code_version"
@@ -51,7 +51,7 @@ jobs:
         run: |
           bash .github/scripts/package.sh "$VERSION"
           if [ ! -f dist/notes.md ]; then
-            if [ "$GITHUB_REF_TYPE" = tag ]; then
+            if [ "$GITHUB_EVENT_NAME" = push ]; then
               echo "::error::CHANGELOG.md has no [$VERSION] section"
               exit 1
             fi
@@ -66,7 +66,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publish
-        if: github.ref_type == 'tag'
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
