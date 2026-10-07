@@ -5,7 +5,9 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
 
 ## [Unreleased]
 
-First version, 0.1.0.
+## [1.0.0] — 2026-10-07
+
+Initial release.
 
 - **F10 menu** built from `user-scripts/`: subfolders as submenus, `_` names skipped, `NN-`
   ordering prefixes, paging past 10 entries per level (DCS does not page), *Refresh menu* and
