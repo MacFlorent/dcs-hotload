@@ -133,11 +133,12 @@ is on disk. Details: the header of the script.
    mission (an IADS, a recorder) is loaded by the mission, not by `Hotload.load`: reloading it
    replaces its classes underneath the live instances.
 
-## Claude Code skill (optional)
+## Claude Code plugin (optional)
 
-`skills/piloting-dcs-hotload/` is a skill for Claude Code: driving the mailbox with `bin/hotload.sh`,
-which code is live after what, and DCS scripting traps measured in a live mission. Hotload does
-not need it. To use it in one mission, see [skills/README.md](skills/README.md).
+The repository is also a Claude Code plugin, which teaches an agent to drive the mailbox with
+`bin/hotload.sh` and which code is live after what. Hotload does not need it, and it is not part
+of the release package: install it in Claude Code from the repository, with
+`/plugin marketplace add MacFlorent/dcs-hotload`, then `/plugin install dcs-hotload@dcs-hotload`.
 
 ## Development
 

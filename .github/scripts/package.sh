@@ -12,8 +12,9 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 # What a mission gets. An allowlist, so a new file ships only once it is named here. LICENSE.md
-# because the license requires a copy in every redistribution.
-shipped=(dcs-hotload.lua README.md LICENSE.md bin examples skills)
+# because the license requires a copy in every redistribution. Not skills/ nor .claude-plugin/:
+# the Claude Code plugin is installed from the repository, never copied into a mission.
+shipped=(dcs-hotload.lua README.md LICENSE.md bin examples)
 
 die() { echo "package: $*" >&2; exit 1; }
 
