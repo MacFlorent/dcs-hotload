@@ -5,5 +5,8 @@
 # Local working space: specs and plans before they become a .tracker/ spec.
 /.drafts/
 
+# Lint tools, fetched at pinned versions by .github/scripts/lint.sh.
+/.tools/
+
 # The release package that .github/scripts/package.sh builds.
 /dist/

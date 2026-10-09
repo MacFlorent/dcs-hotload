@@ -18,21 +18,21 @@ jobs:
 
       # Lua 5.1 is the DCS mission runtime. The tests read real folders through LuaFileSystem, as
       # hotload does in DCS; luarocks is told 5.1 because apt's luarocks targets another version.
-      - name: Install Lua 5.1, LuaFileSystem and luacheck
+      - name: Install Lua 5.1 and LuaFileSystem
         run: |
           sudo apt-get update -q
           sudo apt-get install -y lua5.1 liblua5.1-0-dev luarocks
           sudo luarocks --lua-version=5.1 install luafilesystem
-          sudo luarocks --lua-version=5.1 install luacheck
 
       - name: Tests
         run: lua5.1 test/run.lua
 
+      # The pinned luacheck binary, the same one a local run uses.
       - name: luacheck
-        run: luacheck .
+        run: bash .github/scripts/lint.sh
 
       - name: ShellCheck
-        run: shellcheck bin/hotload.sh .github/scripts/package.sh
+        run: shellcheck bin/hotload.sh .github/scripts/package.sh .github/scripts/lint.sh
 
       # Builds the zip a release would publish, so a broken package shows before any tag.
       - name: Package
