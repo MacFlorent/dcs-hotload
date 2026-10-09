@@ -38,6 +38,19 @@ jobs:
       - name: Validate the Claude Code plugin
         run: npx --yes @anthropic-ai/claude-code plugin validate .
 
+      # The plugin is released with the tool: its version follows Hotload.version, both changed by
+      # the release pull request (CONTRIBUTING.md).
+      - name: Plugin version matches Hotload.version
+        run: |
+          python3 - <<'EOF'
+          import json, re, sys
+          code = re.search(r'^Hotload\.version = "([^"]+)"', open("dcs-hotload.lua").read(), re.M).group(1)
+          plugin = json.load(open(".claude-plugin/plugin.json")).get("version")
+          if plugin != code:
+              print(f"::error::plugin.json version {plugin} is not Hotload.version {code}")
+              sys.exit(1)
+          EOF
+
       - name: ShellCheck
         run: shellcheck bin/hotload.sh .github/scripts/package.sh .github/scripts/lint.sh
 

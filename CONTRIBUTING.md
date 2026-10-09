@@ -167,13 +167,22 @@ requires a copy in every redistribution.
 1. Optionally, check the package first: run the *Release* workflow by hand from the Actions tab and
    download the zip it attaches, or run `bash .github/scripts/package.sh` and look in
    `dist/dcs-hotload/` (Git Bash has no `zip`, so locally only the folder is built).
-2. On a `release/<x.y.z>` branch, set `Hotload.version` and rename `[Unreleased]` in
-   `CHANGELOG.md` to `[x.y.z] — YYYY-MM-DD`, with a fresh `[Unreleased]` above it. Pull request to
-   `main`.
+2. On a `release/<x.y.z>` branch, set `Hotload.version` and the `version` of
+   `.claude-plugin/plugin.json`, and rename `[Unreleased]` in `CHANGELOG.md` to
+   `[x.y.z] — YYYY-MM-DD`, with a fresh `[Unreleased]` above it. Pull request to `main`. CI fails
+   while the two versions disagree.
 3. Tag `v<x.y.z>` on `main` once merged, and push the tag. The *Release* workflow runs the tests,
    checks that the tag matches `Hotload.version`, is on `main` and has its `CHANGELOG.md` section,
    then publishes the release with that section as its notes. A tag is never moved; a wrong
    release is fixed by the next.
+4. Point the `dcs-agent-skills` marketplace at the new tag, with a pull request there: its
+   `dcs-hotload` entry's `ref` becomes `v<x.y.z>`.
+
+The Claude Code plugin is released with the tool, and published by the `dcs-agent-skills`
+marketplace, which holds every DCS plugin; this repository has no marketplace of its own. That
+entry installs from a release tag, not from `main`, and Claude Code updates an installed plugin
+only when its `version` changes: so a plugin user gets exactly what was released, never a commit
+in between.
 
 ## Writing guidance
 
