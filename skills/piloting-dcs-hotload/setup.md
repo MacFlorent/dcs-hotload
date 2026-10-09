@@ -65,4 +65,8 @@ bash dcs-hotload/bin/hotload.sh log ready              # ready, its version, mai
 bash dcs-hotload/bin/hotload.sh run -e 'return "pong"'  # done, with "pong" as result
 ```
 
+These run in Bash: Git Bash on Windows. When the user runs them, tell them to use Git Bash
+(*Open Git Bash here* in the mission folder): `bash` is usually not on the `PATH` of PowerShell or
+cmd.
+
 When DCS is not running, say that this step is still to do.
