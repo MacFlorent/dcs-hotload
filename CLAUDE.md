@@ -24,7 +24,7 @@ loaded.
 
 ```
 lua5.1 test/run.lua        # the offline suite; a name filters
-luacheck .                 # as CI runs it
+bash .github/scripts/lint.sh   # luacheck at its pinned version, as CI runs it
 ```
 
 On Windows without `lua5.1` on `PATH`: `"/c/Program Files (x86)/Lua/5.1/lua.exe" test/run.lua`.

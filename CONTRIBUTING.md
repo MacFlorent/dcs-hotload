@@ -8,8 +8,8 @@ shell client. This file holds every rule for changing it; `CLAUDE.md` only point
 - **Lua 5.1 with LuaFileSystem**, to run the tests. On Windows, *Lua for Windows* has both, at
   `C:\Program Files (x86)\Lua\5.1\lua.exe`. On Linux, `lua5.1` and
   `luarocks --lua-version=5.1 install luafilesystem`.
-- **A Bash shell** (Git Bash on Windows), for `bin/hotload.sh` and the commands below.
-- **luacheck**, optional locally: CI runs it on every pull request.
+- **A Bash shell** (Git Bash on Windows), for `bin/hotload.sh` and the commands below, and `curl`,
+  with which `.github/scripts/lint.sh` fetches luacheck.
 - **DCS World** with the `MissionScripting.lua` edit described in `README.md`, for checks only the
   simulator can answer.
 
@@ -25,6 +25,7 @@ shell client. This file holds every rule for changing it; `CLAUDE.md` only point
 | `.tracker/` | work in progress and work done, and `IDEAS.md` — see *Tracking work* |
 | `.drafts/` | local working space, git-ignored |
 | `.github/scripts/package.sh` | builds the release package into `dist/` — see *Releasing* |
+| `.github/scripts/lint.sh` | runs luacheck at a pinned version, downloaded into `.tools/` (git-ignored) |
 | `dist/` | the release package, git-ignored |
 | `CHANGELOG.md` | what each version changed |
 
@@ -32,7 +33,7 @@ shell client. This file holds every rule for changing it; `CLAUDE.md` only point
 
 ```
 lua5.1 test/run.lua            # every suite; a name filters: lua5.1 test/run.lua mailbox
-luacheck .                     # as CI runs it
+bash .github/scripts/lint.sh   # luacheck at its pinned version, as CI runs it
 ```
 
 On Windows without `lua5.1` on `PATH`: `"/c/Program Files (x86)/Lua/5.1/lua.exe" test/run.lua`.
@@ -73,7 +74,7 @@ These steps are mandatory, whatever tools you work with.
    that commit. The idea the work takes up, if any, leaves `IDEAS.md` in the same commit.
 3. **Branch** from an up-to-date `main`, named as *Git flow* says.
 4. **Test first** — see *Test first*.
-5. **Run the tests and luacheck.** When only DCS can show that the change works, say so.
+5. **Run the tests and the lint script.** When only DCS can show that the change works, say so.
 6. **Add a `CHANGELOG.md` entry** for any change to `dcs-hotload.lua` or `bin/hotload.sh` — what a
    user installs.
 7. **Commit** as *Git flow* says.

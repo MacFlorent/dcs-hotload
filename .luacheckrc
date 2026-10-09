@@ -1,4 +1,4 @@
--- luacheck configuration. CI runs `luacheck .` from the repository root.
+-- luacheck configuration, read by .github/scripts/lint.sh, locally and in CI.
 std = "lua51"
 max_line_length = 120
 
