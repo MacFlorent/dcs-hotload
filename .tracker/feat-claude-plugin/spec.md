@@ -1,6 +1,6 @@
 # dcs-hotload as a Claude Code plugin
 
-Status: in-progress
+Status: done
 
 The general DCS knowledge that the current skill mixes in moves to the `dcs-missions` plugin of
 `MacFlorent/dcs-agent-skills`, which also lists this plugin in its marketplace once released.
