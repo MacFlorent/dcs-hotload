@@ -1,5 +1,6 @@
 {
   "name": "dcs-hotload",
+  "version": "1.1.0",
   "description": "Run Lua in a live DCS World mission through dcs-hotload's mailbox",
   "author": { "name": "Flogas" },
   "repository": "https://github.com/MacFlorent/dcs-hotload",
