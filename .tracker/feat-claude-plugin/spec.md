@@ -292,3 +292,6 @@ Decided while building the setup (third pull request):
   fresh `user-scripts/` does not hold.
 - `.luacheckrc` excludes `dist/`: a local `package.sh` run left a copy of the broken self-tests
   there for luacheck to find.
+- **Tried in DCS 2.9.30**: a mission set up by a headless agent (`deploy`, `patch-miz`) opened in DCS,
+  its trigger loaded the mission's `dcs-hotload.lua`, and `hotload.sh run -e 'return "pong"'` came back
+  `done` with `pong`.
