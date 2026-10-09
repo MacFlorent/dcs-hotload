@@ -31,6 +31,10 @@ jobs:
       - name: luacheck
         run: luacheck .
 
+      # The repository is a Claude Code plugin; a broken manifest would break every install.
+      - name: Validate the Claude Code plugin
+        run: npx --yes @anthropic-ai/claude-code plugin validate .
+
       - name: ShellCheck
         run: shellcheck bin/hotload.sh .github/scripts/package.sh
 
