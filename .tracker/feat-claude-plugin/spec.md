@@ -43,7 +43,6 @@ tagged commit and carry the same version.
 ```
 .claude-plugin/
   plugin.json            name "dcs-hotload", version = the tool's version
-  marketplace.json       single-plugin marketplace, so the tool installs on its own
 skills/
   piloting-dcs-hotload/
     SKILL.md             driving a running mission (reworked, see below)
@@ -60,8 +59,8 @@ repository root is the plugin root.
 
 - `plugin.json` `version` must equal the tool version (the one `dcs-hotload <version> ready`
   prints). Add the check to the release steps in `CONTRIBUTING.md`, or derive one from the other.
-- `marketplace.json` lists one plugin, pinned to the current release tag (see Releases). The
-  `dcs-agent-skills` marketplace also lists this plugin, pinned the same way; both are fine at once.
+- No `marketplace.json` here: the `dcs-agent-skills` marketplace lists this plugin, pinned to a
+  release tag (see Releases and Decisions).
 - **The release zip must not contain `skills/` or `.claude-plugin/`.** A deployed mission folder
   holds only the tool. Today `skills/` is copied into every mission, which is how skill copies
   drift.
@@ -87,11 +86,11 @@ under the last released version string. Instead, **the plugin follows releases, 
 default branch**:
 
 - `plugin.json` `version` is set to the release version, and only in the release commit.
-- The release commit also sets the entry in this repository's `marketplace.json` to
+- The `dcs-agent-skills` marketplace's entry for this plugin is
   `{ "source": "github", "repo": "MacFlorent/dcs-hotload", "ref": "v<version>" }`, the tag that
-  commit receives. A fresh install and an update both get exactly the released tree.
+  commit receives, moved by a pull request there after each release. A fresh install and an
+  update both get exactly the released tree.
 - The same tag builds the zip. One version, one commit, two packagings.
-- After the release, bump the `ref` in the `dcs-agent-skills` marketplace too (see its spec).
 - Add these steps to the release checklist in `CONTRIBUTING.md`, and make `claude plugin
   validate .` part of it.
 
@@ -232,8 +231,8 @@ behind. Silent when there is no `dcs-hotload/` in the working folder. Do it afte
 
 ## README changes
 
-- Setup: add "With Claude Code: install the plugin (`/plugin marketplace add MacFlorent/dcs-hotload`,
-  then `/plugin install dcs-hotload@dcs-hotload`; the marketplace is named `dcs-hotload`) and ask Claude to set up hotload in the mission." Manual steps
+- Setup: add "With Claude Code: install the plugin from the `dcs-agent-skills` marketplace
+  (`dcs-hotload@dcs-agent-skills`) and ask Claude to set up hotload in the mission." Manual steps
   stay as they are.
 - Replace the "Claude Code skill (optional)" section and delete `skills/README.md` (its copy-into-
   each-mission install is what this change removes).
@@ -262,14 +261,20 @@ run setup (adopts the existing `dcs-hotload/`).
 2. The skill trimmed to the tool, `.claude-plugin/`, the release zip without `skills/`, the
    README.
 3. The setup procedure: `setup.md`, `hotload-setup.py`, its tests.
-4. `release/1.1.0`: the version, the marketplace entry pinned to `v1.1.0`. Then, in
-   dcs-agent-skills, its marketplace entry for this plugin.
+4. `release/1.1.0`: the version in `dcs-hotload.lua` and `plugin.json`. Then, in
+   dcs-agent-skills, its marketplace entry for this plugin, pinned to `v1.1.0`.
 
 ## Decisions
 
 - **The `.miz` patcher is Python only** (see Setup tooling). Turned down: Python with Lua 5.1, as
   `miz.py` does (proven, but a Lua install only for setup); Lua with an outside zip tool (Git Bash
   has none).
+- **No marketplace of this repository's own**: `dcs-agent-skills` is the one marketplace for every
+  DCS plugin. Turned down: a single-plugin `marketplace.json` here, so the tool could install on
+  its own. Someone who only wants hotload adds `dcs-agent-skills` and installs only this plugin, so
+  it brought nothing but a second pin to move at each release and a second install id for the
+  same plugin. What it cost to drop: its pin was checked by this repository's CI; the pin in
+  `dcs-agent-skills` is moved by a release step instead.
 - **The deployed version is read from `dcs-hotload.lua`.** Turned down: a `VERSION` file written
   at deploy, easier for shell scripts but a second copy of the version that can disagree.
 
