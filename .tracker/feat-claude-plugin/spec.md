@@ -272,3 +272,23 @@ run setup (adopts the existing `dcs-hotload/`).
   has none).
 - **The deployed version is read from `dcs-hotload.lua`.** Turned down: a `VERSION` file written
   at deploy, easier for shell scripts but a second copy of the version that can disagree.
+
+## Comments
+
+Decided while building the setup (third pull request):
+
+- **One list of shipped files**, `.github/scripts/shipped.txt`, read by `package.sh` and by
+  `hotload-setup.py`, so the release package and a deployed mission hold the same files.
+- **Exit codes**: 0 done or nothing to do, 1 failed or refused, 2 a decision is needed (rerun with
+  the flag the message names once the user agrees), 3 usage. The script never decides for the
+  user: `deploy --update`, `unlock --yes` and `patch-miz --retarget` are explicit.
+- **`status` does not count an older deployed version as missing**: a mission keeps the version it
+  was tested with; it reports it.
+- **The writer follows the style of the file it read**: DCS 2.9.30 writes tabs and `{}` for an empty
+  table, older missions four spaces and an open pair. Numbers are kept as written. The round trip
+  is exact on all 951 missions DCS ships here; that check takes about a minute and a half, so it
+  runs on request (`HOTLOAD_TEST_SHIPPED_MISSIONS=1`), not in CI.
+- **The verify step runs `return "pong"`** through the mailbox rather than a self-test, which a
+  fresh `user-scripts/` does not hold.
+- `.luacheckrc` excludes `dist/`: a local `package.sh` run left a copy of the broken self-tests
+  there for luacheck to find.
