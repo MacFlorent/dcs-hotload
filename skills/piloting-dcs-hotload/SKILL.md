@@ -17,16 +17,16 @@ scripting, not hotload.
 
 ## Is this mission set up?
 
-From the mission folder, hotload is ready when:
+From the mission folder:
 
-- `dcs-hotload/dcs-hotload.lua` exists, with `user-inbox/` and `user-outbox/` beside it (the
-  mailbox is on);
-- the `.miz` loads it at mission start (`dofile` of that file, from a trigger or an embedded
-  script);
-- with the mission running, `bash dcs-hotload/bin/hotload.sh log ready` shows `ready` and
-  `mailbox on`.
+```bash
+python <this skill's folder>/scripts/hotload-setup.py status
+```
 
-When one is missing, follow the setup in `dcs-hotload/README.md`.
+Exit 0: the tool is deployed with the mailbox on (a version older than the plugin's is reported,
+not counted as missing: the mission may have been tested with it), DCS lets missions use
+`io` and `lfs`, and the `.miz` loads this mission's copy. Otherwise it names what is missing:
+follow [setup.md](setup.md), which also says how to check a running mission.
 
 ## Send a command: one call
 
