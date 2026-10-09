@@ -5,6 +5,10 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
 
 ## [Unreleased]
 
+- **Claude Code plugin**: the repository is a plugin, installed from the repository instead of
+  copied into each mission. Its skill documents the tool only: the DCS scripting advice it carried
+  is gone. The release package no longer contains `skills/`.
+
 ## [1.0.0] — 2026-10-07
 
 Initial release.

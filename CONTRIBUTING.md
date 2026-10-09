@@ -20,7 +20,7 @@ shell client. This file holds every rule for changing it; `CLAUDE.md` only point
 | `dcs-hotload.lua` | the tool: everything a mission loads |
 | `bin/hotload.sh` | the mailbox client |
 | `examples/` | self-test scripts, run in DCS and by the tests |
-| `skills/` | optional Claude Code skills; `skills/README.md` says how to install them |
+| `.claude-plugin/`, `skills/` | the Claude Code plugin: its manifest and its skill — see *Writing guidance*; not in the release package |
 | `test/` | the offline suite: plain Lua 5.1 against a stub DCS |
 | `.tracker/` | work in progress and work done, and `IDEAS.md` — see *Tracking work* |
 | `.drafts/` | local working space, git-ignored |
@@ -150,7 +150,7 @@ how whoever updates one knows whether it is worth it.
 ## Releasing
 
 A release is a GitHub release holding `dcs-hotload-<x.y.z>.zip`: a single `dcs-hotload/` folder
-with `dcs-hotload.lua`, `README.md`, `LICENSE.md`, `bin/`, `examples/` and `skills/` — what a
+with `dcs-hotload.lua`, `README.md`, `LICENSE.md`, `bin/` and `examples/` — what a
 mission needs, extracted into its folder. `.github/scripts/package.sh` builds it from an allowlist,
 so a new file reaches missions only once it is named there. `LICENSE.md` ships because the license
 requires a copy in every redistribution.
@@ -168,7 +168,11 @@ requires a copy in every redistribution.
 
 ## Writing guidance
 
-The guidance files are `README.md`, `skills/README.md`, this file and `CLAUDE.md`.
+The guidance files are `README.md`, this file and `CLAUDE.md`. The skill in `skills/` follows the
+same rules, and one more: **it documents the tool, and nothing else.** No DCS scripting advice —
+how to spawn, task or measure belongs to whatever DCS knowledge the agent has — and no findings of
+a project that uses hotload. Anything true because of hotload, such as a limit a script runs
+under, belongs in it.
 
 - **A rule is stated once**, here, with its reason; other files point at it. A command may be
   repeated.

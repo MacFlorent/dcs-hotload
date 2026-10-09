@@ -1,6 +1,6 @@
 ---
 name: piloting-dcs-hotload
-description: Use when driving a running DCS World mission through dcs-hotload (user-inbox / user-outbox, Hotload.run), when writing Lua that spawns, tasks or measures units in a live mission, or when a change to a DCS mission does not seem to take effect after a restart.
+description: Use when setting up dcs-hotload in a DCS mission folder (deploying or updating the tool, checking that the .miz loads it), or when running Lua in a live DCS mission through it (user-inbox / user-outbox, Hotload.run, bin/hotload.sh).
 ---
 
 # Piloting DCS through dcs-hotload
@@ -8,8 +8,25 @@ description: Use when driving a running DCS World mission through dcs-hotload (u
 ## Overview
 
 dcs-hotload runs Lua inside a live mission; you drive it by dropping files. Its `README.md` (in the
-`dcs-hotload/` folder) is the protocol reference. This skill adds a one-call helper and the DCS
-behaviours that silently break live-mission Lua.
+mission's `dcs-hotload/` folder) is the protocol reference: the `Hotload.*` calls, the mailbox,
+the rules for `user-lib/`. This skill adds what an agent needs on top: a one-call client, what is
+live after what, and the limits a script runs under.
+
+This skill covers the tool only. What the Lua does in DCS — spawning, tasking, measuring — is DCS
+scripting, not hotload.
+
+## Is this mission set up?
+
+From the mission folder, hotload is ready when:
+
+- `dcs-hotload/dcs-hotload.lua` exists, with `user-inbox/` and `user-outbox/` beside it (the
+  mailbox is on);
+- the `.miz` loads it at mission start (`dofile` of that file, from a trigger or an embedded
+  script);
+- with the mission running, `bash dcs-hotload/bin/hotload.sh log ready` shows `ready` and
+  `mailbox on`.
+
+When one is missing, follow the setup in `dcs-hotload/README.md`.
 
 ## Send a command: one call
 
@@ -37,36 +54,29 @@ mission folder).
 | You changed | It is live after | Verify |
 |---|---|---|
 | `user-lib/`, `user-scripts/`, an inbox command | nothing (re-read every run) | — |
-| `dcs-hotload.lua` | mission Restart (the boot line `dofile`s from disk) | `hotload.sh log ready` |
-| anything embedded in the `.miz` (custom scripts, Skynet, mission config) | rebuild, then **re-open the `.miz` from the Mission menu** | `hotload.sh check <name-in-miz> <file-on-disk>` |
+| `dcs-hotload.lua` | mission Restart (the boot line `dofile`s it from disk) | `hotload.sh log ready` |
+| a file the `.miz` embeds | the `.miz` rebuilt and re-opened | `hotload.sh check <name-in-miz> <file-on-disk>` |
 
-DCS Restart replays `%TEMP%\DCS\tempMission.miz`, the copy made at launch, so a rebuilt `.miz`
-needs a fresh open. (Missions built with VEAF's veaf-tools also embed every leftover `.lua` in
-`src/scripts/`.)
+## Limits a command runs under
 
-## Writing Lua for a live mission
+These come from how hotload runs a script; they hold whatever the script does.
 
-**Before spawning, tasking or measuring units, read [dcs-scripting-facts.md](dcs-scripting-facts.md)**:
-links to the Hoggit wiki API pages, plus measured behaviour the wiki does not cover. The traps that
-cost runs:
-
-- An AI task on the **first waypoint of an air-started group is ignored**: put the attack task on
-  waypoint 2, or `pushTask` it after the spawn delay.
-- Wait (`Hotload.wait(1)`) before giving a freshly spawned group's controller any task, command or
-  option; the wiki warns that doing it at once can crash the game.
-- Measure inside the command and **return the numbers**: the outbox carries them.
-- Remove event handlers and spawned groups on **every exit path**, timeouts included. *Stop all
-  runs* abandons a command mid-wait without running its cleanup, so a command that spawns units
-  also arms a `timer.scheduleFunction` safety net that cleans up after its longest wait.
-- No `Hotload.wait` inside `pcall` (stock Lua 5.1 cannot yield across it).
-- Payload CLSIDs, weapon flags and unit type names recalled from memory may be wrong and fail
-  silently (a jet spawns unarmed). Look flags up on the wiki, query `list_payloads` /
-  `list_unit_types` when the veaf-mission-editor MCP server is connected, and return the spawned
-  unit's `getAmmo()` in the result.
+- **What a command returns is its result**: the outbox carries it. Measure inside the command and
+  return the numbers.
+- **`Hotload.wait`, `waitFor`, `load` and `run` work only inside a run.** The ones that wait —
+  `wait`, `waitFor`, `run` — never inside a `pcall` or a coroutine of your own: a run is a
+  coroutine, and DCS's Lua 5.1 cannot yield across those.
+- **_Stop all runs_ abandons a command mid-wait without running its cleanup.** A command that leaves
+  objects in the world needs a cleanup that does not depend on reaching its end.
+- **A `timer.scheduleFunction` armed inside a run and firing after the run ended has crashed DCS**
+  (twice, DCS 2.9.30, an access violation in `lua.dll`; intermittent, cause unproven). Keep its id
+  and `timer.removeFunction` it on the normal exit path.
+- **The same script cannot run twice at once**; a second start is `refused`.
 
 ## Common mistakes
 
 | Symptom | Cause |
 |---|---|
-| SAM never goes live again | out of ammunition; Skynet keeps it dark (an ammo truck fixes it) |
 | Outbox stuck on `started` after a mission restart | by design: it never finished; delete it to rerun |
+| A command never runs | its outbox file already exists (delete it), or its name starts with `_` |
+| A change to `dcs-hotload.lua` has no effect | the mission was not restarted |
