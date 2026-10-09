@@ -10,3 +10,6 @@
 
 # The release package that .github/scripts/package.sh builds.
 /dist/
+
+# Python bytecode, from the setup script and its tests.
+__pycache__/

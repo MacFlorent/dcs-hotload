@@ -1,0 +1,10 @@
+# What a mission gets: the release package, and what the plugin's setup deploys into a mission.
+# One path per line, from the repository root. An allowlist, so a new file ships only once it is
+# named here. LICENSE.md because the license requires a copy in every redistribution. Not skills/
+# nor .claude-plugin/: the Claude Code plugin is installed from the repository, never copied into
+# a mission.
+dcs-hotload.lua
+README.md
+LICENSE.md
+bin
+examples

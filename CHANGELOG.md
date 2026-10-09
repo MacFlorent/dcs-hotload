@@ -8,6 +8,10 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
 - **Claude Code plugin**: the repository is a plugin, installed from the repository instead of
   copied into each mission. Its skill documents the tool only: the DCS scripting advice it carried
   is gone. The release package no longer contains `skills/`.
+- **Setup from the plugin**: `hotload-setup.py` deploys the tool into a mission folder (an older
+  copy only on request, `user-*` folders never touched), unlocks `io` and `lfs` in
+  `MissionScripting.lua` once the user agrees, and adds the boot trigger to the `.miz`. Python 3
+  only: it reads and writes the mission without Lua.
 
 ## [1.0.0] — 2026-10-07
 

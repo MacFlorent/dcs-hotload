@@ -8,6 +8,7 @@ shell client. This file holds every rule for changing it; `CLAUDE.md` only point
 - **Lua 5.1 with LuaFileSystem**, to run the tests. On Windows, *Lua for Windows* has both, at
   `C:\Program Files (x86)\Lua\5.1\lua.exe`. On Linux, `lua5.1` and
   `luarocks --lua-version=5.1 install luafilesystem`.
+- **Python 3**, for the plugin's setup script and its tests (standard library only).
 - **A Bash shell** (Git Bash on Windows), for `bin/hotload.sh` and the commands below, and `curl`,
   with which `.github/scripts/lint.sh` fetches luacheck.
 - **DCS World** with the `MissionScripting.lua` edit described in `README.md`, for checks only the
@@ -22,6 +23,8 @@ shell client. This file holds every rule for changing it; `CLAUDE.md` only point
 | `examples/` | self-test scripts, run in DCS and by the tests |
 | `.claude-plugin/`, `skills/` | the Claude Code plugin: its manifest and its skill — see *Writing guidance*; not in the release package |
 | `test/` | the offline suite: plain Lua 5.1 against a stub DCS |
+| `test/python/` | the tests of the plugin's setup script, `skills/piloting-dcs-hotload/scripts/hotload-setup.py` |
+| `.github/scripts/shipped.txt` | what a mission gets: the release package, and what the setup script deploys |
 | `.tracker/` | work in progress and work done, and `IDEAS.md` — see *Tracking work* |
 | `.drafts/` | local working space, git-ignored |
 | `.github/scripts/package.sh` | builds the release package into `dist/` — see *Releasing* |
@@ -33,6 +36,7 @@ shell client. This file holds every rule for changing it; `CLAUDE.md` only point
 
 ```
 lua5.1 test/run.lua            # every suite; a name filters: lua5.1 test/run.lua mailbox
+python -m unittest discover -s test/python    # the setup script
 bash .github/scripts/lint.sh   # luacheck at its pinned version, as CI runs it
 ```
 
@@ -48,11 +52,16 @@ it:
 | | Where it runs | What belongs in it |
 |---|---|---|
 | `test/` | plain Lua 5.1 and CI, against `test/dcs-stub.lua` | the runner, waits, the guard, the mailbox, the menu, the serializer, startup. **New tests go here** |
+| `test/python/` | Python 3 and CI | the plugin's setup script: the `.miz` reader and writer, the boot trigger, deploying, unlocking |
 | `examples/` self-tests | inside DCS, copied into a mission | what a stub cannot show: how DCS renders the menu, real sim timing, how DCS names a loaded chunk |
 
 To run the self-tests, copy `examples/user-scripts/selftest/` into a mission's `user-scripts/`
 and `examples/user-lib/*` into its `user-lib/`, then click each entry: every script states its
 expected log line at the top. Run them after a DCS update, or after a change the stub cannot judge.
+
+The `.miz` reader and writer must give back the text it read for any mission it does not change.
+After changing either, run the round trip over every mission DCS ships (about a minute and a half):
+`HOTLOAD_TEST_SHIPPED_MISSIONS=1 python -m unittest discover -s test/python`.
 
 A suite is `test/test_<area>.lua`. It loads `luaunit.lua` and `dcs-stub.lua`, builds a sim with
 `Stub.new()`, loads hotload on a folder (`sim:load(root)`, with `Stub.tempRoot` for a throwaway

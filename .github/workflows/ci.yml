@@ -27,6 +27,9 @@ jobs:
       - name: Tests
         run: lua5.1 test/run.lua
 
+      - name: Tests of the plugin's setup script
+        run: python3 -m unittest discover -s test/python
+
       # The pinned luacheck binary, the same one a local run uses.
       - name: luacheck
         run: bash .github/scripts/lint.sh

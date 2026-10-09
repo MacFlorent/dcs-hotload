@@ -3,8 +3,8 @@ std = "lua51"
 max_line_length = 120
 
 -- examples/ holds deliberately broken self-tests (a syntax error, a runtime error); luaunit is
--- vendored as published.
-exclude_files = { "examples/**", "test/luaunit.lua" }
+-- vendored as published; dist/ is the release package a local package.sh run leaves behind.
+exclude_files = { "examples/**", "test/luaunit.lua", "dist/**" }
 
 files["dcs-hotload.lua"] = {
   globals = { "Hotload", "HotloadCore" },                         -- the two it writes

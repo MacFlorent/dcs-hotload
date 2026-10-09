@@ -139,6 +139,9 @@ The repository is also a Claude Code plugin, which teaches an agent to drive the
 `bin/hotload.sh` and which code is live after what. Hotload does not need it, and it is not part
 of the release package: install it in Claude Code from the repository, with
 `/plugin marketplace add MacFlorent/dcs-hotload`, then `/plugin install dcs-hotload@dcs-hotload`.
+Then ask Claude to set hotload up in a mission folder: it deploys the tool, checks
+`MissionScripting.lua` and adds the boot trigger to the `.miz`, asking before each change outside
+the mission folder. It needs Python 3.
 
 ## Development
 

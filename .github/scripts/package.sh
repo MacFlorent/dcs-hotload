@@ -3,7 +3,8 @@
 #
 #   bash .github/scripts/package.sh [VERSION]      VERSION defaults to Hotload.version
 #
-# Stages dist/dcs-hotload/ from the allowlist below, zips it as dist/dcs-hotload-VERSION.zip
+# Stages dist/dcs-hotload/ from the allowlist in shipped.txt, zips it as
+# dist/dcs-hotload-VERSION.zip
 # (skipped when zip is not installed, as in Git Bash), and writes the body of CHANGELOG.md's
 # "## [VERSION]" section to dist/notes.md when there is one. CONTRIBUTING.md says how a release
 # is made.
@@ -11,10 +12,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 
-# What a mission gets. An allowlist, so a new file ships only once it is named here. LICENSE.md
-# because the license requires a copy in every redistribution. Not skills/ nor .claude-plugin/:
-# the Claude Code plugin is installed from the repository, never copied into a mission.
-shipped=(dcs-hotload.lua README.md LICENSE.md bin examples)
+# What a mission gets: the list in shipped.txt, which the plugin's setup also deploys from.
+mapfile -t shipped < <(grep -v -e '^#' -e '^[[:space:]]*$' .github/scripts/shipped.txt)
 
 die() { echo "package: $*" >&2; exit 1; }
 
