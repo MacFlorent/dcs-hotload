@@ -5,7 +5,7 @@ folder: the folder that holds the `.miz` and holds, or will hold, `dcs-hotload/`
 checks first and changes only what is missing, so running it again is harmless.
 
 ```bash
-python <skill>/scripts/hotload-setup.py status        # what is missing; exit 0 when all set
+python <skill>/scripts/hotload-setup.py status --dcs DCS     # what is missing; exit 0 when all set
 ```
 
 Exit codes: 0 done or nothing to do, 1 failed or refused, 2 a decision is needed, 3 usage. **On a
@@ -28,16 +28,16 @@ tested with. Updating is `deploy --update`, after asking. A **newer** version is
 ## 2. Unlock the scripting environment
 
 ```bash
-python <skill>/scripts/hotload-setup.py unlock
+python <skill>/scripts/hotload-setup.py unlock --dcs DCS
 ```
 
 hotload needs `io` and `lfs`, which DCS's `Scripts/MissionScripting.lua` removes from missions.
-The script finds the install (`--dcs <install>` or `DCS_INSTALL` when it is not in a usual place)
-and returns 2 while they are locked. **Ask the user first**, with the message's reasons: the edit
-is install-wide, gives every mission file access (multiplayer ones included), affects multiplayer
-integrity checks, and DCS updates revert it. Then `unlock --yes` comments out the two lines and
-keeps the original as `MissionScripting.lua.bak`. Under `Program Files`, writing may need an
-administrator; the message says so.
+`DCS` is the DCS World folder, found as `SKILL.md` says. The script returns 2 while they are
+locked. **Ask the user first**, with the message's reasons: the edit is install-wide, gives every
+mission file access (multiplayer ones included), affects multiplayer integrity checks, and DCS
+updates revert it. Then `unlock --dcs DCS --yes` comments out the two lines and keeps the original
+as `MissionScripting.lua.bak`. Under `Program Files`, writing may need an administrator; the
+message says so.
 
 ## 3. Make the `.miz` load it
 

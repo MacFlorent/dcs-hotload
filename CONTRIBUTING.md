@@ -43,12 +43,10 @@ bash .github/scripts/lint.sh   # luacheck at its pinned version, as CI runs it
 ```
 
 After changing the `.miz` reader or writer, also run the round trip over every mission that comes
-with DCS World: it reads them from a local DCS install (`DCS_INSTALL`, or the usual places) and
-takes about a minute and a half, so it runs only on request:
-
-```
-HOTLOAD_TEST_DCS_MISSIONS=1 python -m unittest discover -s test/python
-```
+with DCS World. It takes about a minute and a half, so it runs only when
+`test/python/dcs-install.txt` names your DCS install: copy `test/python/dcs-install.example.txt` to
+it and follow its comment. The copy is git-ignored; comment its line out to skip the round trip
+again. Then run the tests as above.
 
 Lua for Windows names its interpreter `lua.exe`, not `lua5.1`; at its default location, from
 Git Bash: `"/c/Program Files (x86)/Lua/5.1/lua.exe" test/run.lua`.
@@ -92,8 +90,7 @@ These steps are mandatory, whatever tools you work with.
    that commit. The idea the work takes up, if any, leaves `IDEAS.md` in the same commit.
 3. **Branch** from an up-to-date `main`, named as *Git flow* says.
 4. **Test first** — see *Test first*.
-5. **Run the checks** — see *Running the checks*. When only DCS can show that the change works,
-   say so.
+5. **Run the checks** — see *Running the checks*.
 6. **Add a `CHANGELOG.md` entry** for any change to what a user installs: the files in
    `shipped.txt`, or the plugin (`skills/`, `.claude-plugin/`).
 7. **Commit** as *Git flow* says.

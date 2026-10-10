@@ -1,0 +1,4 @@
+# To run the round trip over the missions that come with DCS World (about 1.5 min), copy this file
+# to dcs-install.txt, next to it, and uncomment the next line with your DCS World folder. Comment
+# it out again to skip the round trip.
+# C:\Program Files\Eagle Dynamics\DCS World

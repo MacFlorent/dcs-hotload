@@ -5,6 +5,10 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
 
 ## [Unreleased]
 
+- **Setup takes the DCS install as a parameter**: `hotload-setup.py status` and `unlock` require
+  `--dcs`, and no longer read `DCS_INSTALL` or guess from usual places. The skill says how to find
+  the install once (the installer's registry key) and to ask the user otherwise.
+
 ## [1.1.1] — 2026-10-10
 
 - **Documentation**: the README says where the `Hotload.*` calls work and which ones pause, that

@@ -20,8 +20,13 @@ scripting, not hotload.
 From the mission folder:
 
 ```bash
-python <this skill's folder>/scripts/hotload-setup.py status
+python <this skill's folder>/scripts/hotload-setup.py status --dcs DCS
 ```
+
+`DCS` is the DCS World folder: find it once and pass it wherever `--dcs` is asked. On Windows, the
+installer records it as `Path` under the registry key `HKCU\Software\Eagle Dynamics\DCS World`
+(seen with DCS 2.9.30); check that the folder holds `Scripts/MissionScripting.lua`. When it does
+not, ask the user.
 
 Exit 0: the tool is deployed with the mailbox on (a version older than the plugin's is reported,
 not counted as missing: the mission may have been tested with it), DCS lets missions use
