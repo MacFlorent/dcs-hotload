@@ -5,6 +5,12 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
 
 ## [Unreleased]
 
+- **Documentation**: the README says where the `Hotload.*` calls work and which ones pause, that
+  `Hotload.run` takes the file name with its `NN-` prefix, and that the outbox `status` is the
+  command's, not the entry's; the `user-lib/` rules move under *Writing a script*. The skill
+  points at the README for those limits, and says what `hotload.sh`'s exit code, `log` and `check`
+  mean.
+
 ## [1.1.0] — 2026-10-09
 
 - **Claude Code plugin**: the repository is a plugin, installed from the repository instead of
