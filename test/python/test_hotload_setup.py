@@ -4,7 +4,7 @@
 
 The round trip over every mission that comes with DCS World takes about a minute and a half, so
 it runs only on request, with HOTLOAD_TEST_DCS_MISSIONS=1 and a DCS install found (DCS_INSTALL, or
-one of the usual places). Run it after changing the table reader or writer.
+one of the usual places). Run it after changing the .miz reader or writer.
 """
 import importlib.util
 import os

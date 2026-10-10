@@ -37,21 +37,21 @@ shell client. This file holds every rule for changing it; `CLAUDE.md` only point
 What a change must pass before its pull request:
 
 ```
-lua5.1 test/run.lua            # test hotload, every suite; a name filters: lua5.1 test/run.lua mailbox
+lua5.1 test/run.lua            # test hotload, every suite; a name filters: ... test/run.lua mailbox
 python -m unittest discover -s test/python    # test the setup script
 bash .github/scripts/lint.sh   # luacheck at its pinned version, as CI runs it
 ```
 
-After changing the `.miz` reader or writer, also the round trip over every mission that comes with
-DCS World: it reads them from a local DCS install (`DCS_INSTALL`, or the usual places) and takes
-about a minute and a half, so it runs only on request:
+After changing the `.miz` reader or writer, also run the round trip over every mission that comes
+with DCS World: it reads them from a local DCS install (`DCS_INSTALL`, or the usual places) and
+takes about a minute and a half, so it runs only on request:
 
 ```
 HOTLOAD_TEST_DCS_MISSIONS=1 python -m unittest discover -s test/python
 ```
 
-The commands are Bash, from Git Bash on Windows. Lua for Windows names its interpreter `lua.exe`,
-not `lua5.1`; at its default location: `"/c/Program Files (x86)/Lua/5.1/lua.exe" test/run.lua`.
+Lua for Windows names its interpreter `lua.exe`, not `lua5.1`; at its default location, from
+Git Bash: `"/c/Program Files (x86)/Lua/5.1/lua.exe" test/run.lua`.
 
 ## Test first
 
@@ -70,9 +70,7 @@ To run the self-tests, copy `examples/user-scripts/selftest/` into a mission's `
 and `examples/user-lib/*` into its `user-lib/`, then click each entry: every script states its
 expected log line at the top. Run them after a DCS update, or after a change the stub cannot judge.
 
-The `.miz` reader and writer must give back the text it read for any mission it does not change;
-after changing either, run the round trip over the missions of a DCS install — see *Running the
-checks*.
+The `.miz` reader and writer must give back the text it read for any mission it does not change.
 
 A suite is `test/test_<area>.lua`. It loads `luaunit.lua` and `dcs-stub.lua`, builds a sim with
 `Stub.new()`, loads hotload on a folder (`sim:load(root)`, with `Stub.tempRoot` for a throwaway
