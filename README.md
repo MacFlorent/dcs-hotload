@@ -64,13 +64,16 @@ return { live = live }
 | `Hotload.log(fmt, ...)` | | a `HOTLOAD:` line in dcs.log, stamped with the run's time and label |
 | `Hotload.say(text, s)` | | on screen, and logged |
 
-The calls that pause cannot be reached through a `pcall`, a callback (`table.sort`, a DCS event
-handler), a library's top level or a coroutine of your own: Lua 5.1 cannot pause across those.
-Under a `pcall` nothing waits, and nothing says so. The function given to `waitFor` is called
-every 0.1 s until it returns true: keep it cheap, and don't wait or log in it.
+`wait`, `waitFor`, `load` and `run` work only in the script's own code, not in a coroutine of
+your own or a DCS callback. The calls that pause cannot go under a `pcall`, a `table.sort`
+comparator or a library's top level either: Lua 5.1 cannot pause across those. Under a `pcall`
+the call fails, and the script carries on unless it checks what the `pcall` returned.
 
-`Hotload.run` never raises: `outcome` is `done`, `fail`, `stopped` or `refused` (no such file,
-does not compile, or already running).
+The function given to `waitFor` is called every 0.1 s until it returns a truthy value or the
+timeout passes: keep it cheap, and don't wait or log in it.
+
+A missing, broken or busy entry does not make `Hotload.run` raise: `outcome` is `done`, `fail`,
+`stopped` or `refused` (no such file, does not compile, or already running).
 
 Different scripts can run at once, taking turns at each pause; the same script cannot run twice
 at once. **Stop all runs** ends every running script. A script that never pauses
@@ -109,12 +112,13 @@ return {
 - A file runs once it has held still for a second (so a half-saved file is never read), if its
   outbox file does not exist yet and it is not already running.
 - To run it again, delete its outbox file. Names starting with `_` are ignored.
-- The mission cannot delete files: setup leaves `sanitizeModule('os')` in place, so clean both
-  folders yourself.
+- The mission cannot delete files (`os` stays sanitized: *Setup* unlocks only `io` and `lfs`), so
+  clean both folders yourself.
 - After a mission restart, a command whose outbox still says `started` is not run again.
 
-To click a menu entry from the mailbox, send `return Hotload.run("selftest/wait")`: its
-`{outcome, result, error}` comes back as the result.
+To click a menu entry from the mailbox, send `return Hotload.run("selftest/wait")`: the result is
+then `{ outcome = "done", result = "waited 5 s" }`. The outbox `status` says how the command went,
+not the entry: read `outcome`.
 
 ### Mailbox client
 
@@ -122,7 +126,7 @@ To click a menu entry from the mailbox, send `return Hotload.run("selftest/wait"
 
 ```bash
 bash bin/hotload.sh run --root <mission>/dcs-hotload -e 'return Hotload.run("selftest/wait")'
-bash bin/hotload.sh log                      # HOTLOAD lines since the last start (UTC)
+bash bin/hotload.sh log                      # HOTLOAD lines since the last ready (UTC)
 bash bin/hotload.sh check skynet-iads-compiled.lua src/scripts/skynet-iads-compiled.lua
 ```
 
