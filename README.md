@@ -55,22 +55,38 @@ local live = Hotload.waitFor(function() return arena.samIsLive() end, 120)
 return { live = live }
 ```
 
-| Call | Does |
-|---|---|
-| `Hotload.wait(s)` | waits `s` sim-seconds |
-| `Hotload.waitFor(fn, timeout)` | waits until `fn()` is truthy → `true`, or `timeout` s → `false` |
-| `Hotload.load(name)` | runs `user-lib/<name>.lua` (once per run) and returns its result |
-| `Hotload.run(label)` | runs a `user-scripts/` entry as its own run, waits, returns `{outcome, result, error}` |
-| `Hotload.log(fmt, ...)` | a `HOTLOAD:` line in dcs.log, stamped with the run's time and label |
-| `Hotload.say(text, s)` | on screen, and logged |
+| Call | Pauses | Does |
+|---|---|---|
+| `Hotload.wait(s)` | ✓ | waits `s` sim-seconds |
+| `Hotload.waitFor(fn, timeout)` | ✓ | waits until `fn()` is truthy → `true`, or `timeout` s → `false` |
+| `Hotload.load(name)` | | runs `user-lib/<name>.lua` (once per run) and returns its result |
+| `Hotload.run(label)` | ✓ | runs a `user-scripts/` entry as its own run, waits, returns `{outcome, result, error}` |
+| `Hotload.log(fmt, ...)` | | a `HOTLOAD:` line in dcs.log, stamped with the run's time and label |
+| `Hotload.say(text, s)` | | on screen, and logged |
 
-The first four work only inside a run, and not inside a `pcall` or a coroutine of your own
-(DCS runs Lua 5.1, which cannot yield across those). A
-predicate runs on the tick, not in your script: keep it cheap, don't wait or log in it.
+The calls that pause cannot be reached through a `pcall`, a callback (`table.sort`, a DCS event
+handler), a library's top level or a coroutine of your own: Lua 5.1 cannot pause across those.
+Under a `pcall` nothing waits, and nothing says so. The function given to `waitFor` is called
+every 0.1 s until it returns true: keep it cheap, and don't wait or log in it.
 
-Different scripts run at the same time; the same script cannot run twice at once. **Stop all
-runs** ends every running script. A script that never yields (`while true do end`) freezes the
-sim — nothing can stop it.
+`Hotload.run` never raises: `outcome` is `done`, `fail`, `stopped` or `refused` (no such file,
+does not compile, or already running).
+
+Different scripts can run at once, taking turns at each pause; the same script cannot run twice
+at once. **Stop all runs** ends every running script. A script that never pauses
+(`while true do end`) freezes the sim — nothing can stop it.
+
+### Libraries in `user-lib/`
+
+1. **The top level defines, it does not act.** Define functions and state; don't wait or touch
+   the world while the file loads.
+2. **State that must survive a reload** goes in a guarded global: `Arena = Arena or {}`. A plain
+   `Arena = {}` wipes it on every reload, even under another script that is still waiting.
+3. **Use other files at call time**, inside functions. A load-time dependency is a
+   `Hotload.load("other")` at the top.
+4. **Never reload code that owns live objects.** Something that creates instances for the whole
+   mission (an IADS, a recorder) is loaded by the mission, not by `Hotload.load`: reloading it
+   replaces its classes underneath the live instances.
 
 ## Mailbox
 
@@ -93,19 +109,12 @@ return {
 - A file runs once it has held still for a second (so a half-saved file is never read), if its
   outbox file does not exist yet and it is not already running.
 - To run it again, delete its outbox file. Names starting with `_` are ignored.
-- The mission cannot delete files (DCS keeps `os` out of the mission environment), so clean both
+- The mission cannot delete files: setup leaves `sanitizeModule('os')` in place, so clean both
   folders yourself.
 - After a mission restart, a command whose outbox still says `started` is not run again.
 
-`Hotload.run(label)` runs a `user-scripts/` entry from any script, inbox or menu, and waits for
-it:
-
-```lua
-return Hotload.run("selftest/wait")   -- { outcome = "done", result = "waited 5 s" }
-```
-
-`outcome` is `done`, `fail`, `stopped` or `refused` (no such file, does not compile, or already
-running); it never raises.
+To click a menu entry from the mailbox, send `return Hotload.run("selftest/wait")`: its
+`{outcome, result, error}` comes back as the result.
 
 ### Mailbox client
 
@@ -119,19 +128,7 @@ bash bin/hotload.sh check skynet-iads-compiled.lua src/scripts/skynet-iads-compi
 
 `run` writes the command, waits for its result, prints it, cleans up, and exits 0 done,
 1 fail/refused/stopped, 2 timeout. `check` tells whether the running mission embeds a file as it
-is on disk. Details: the header of the script.
-
-## Rules for user-lib
-
-1. **The top level defines, it does not act.** Define functions and state; don't wait or touch
-   the world while the file loads.
-2. **State that must survive a reload** goes in a guarded global: `Arena = Arena or {}`. A plain
-   `Arena = {}` wipes it on every reload, even under another script that is still waiting.
-3. **Use other files at call time**, inside functions. A load-time dependency is a
-   `Hotload.load("other")` at the top.
-4. **Never reload code that owns live objects.** Something that creates instances for the whole
-   mission (an IADS, a recorder) is loaded by the mission, not by `Hotload.load`: reloading it
-   replaces its classes underneath the live instances.
+is on disk. Every option and default is in the comment at the top of `bin/hotload.sh`.
 
 ## Claude Code plugin (optional)
 
