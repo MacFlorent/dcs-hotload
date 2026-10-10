@@ -26,7 +26,7 @@ python <this skill's folder>/scripts/hotload-setup.py status
 Exit 0: the tool is deployed with the mailbox on (a version older than the plugin's is reported,
 not counted as missing: the mission may have been tested with it), DCS lets missions use
 `io` and `lfs`, and the `.miz` loads this mission's copy. Otherwise it names what is missing:
-follow [setup.md](setup.md), which also says how to check a running mission.
+follow `setup.md`, which also says how to check a running mission.
 
 ## Send a command: one call
 
@@ -34,19 +34,20 @@ follow [setup.md](setup.md), which also says how to check a running mission.
 mission folder:
 
 ```bash
-bash dcs-hotload/bin/hotload.sh run -e 'return Hotload.run("selftest/wait")'
+bash dcs-hotload/bin/hotload.sh run -e 'return timer.getTime()'
 bash dcs-hotload/bin/hotload.sh run --name lane-1 --timeout 1800 my-command.lua
 ```
 
 Prints the outbox result and cleans the mailbox. Exit 0 done, 1 fail/refused/stopped, 2 timeout,
-3 usage. Root: `--root`, else `$HOTLOAD_ROOT`, else `./dcs-hotload` (right when run from the
-mission folder).
+3 usage: the command's own outcome. When the command is `return Hotload.run(...)`, the entry's
+outcome is `result.outcome`. A `fail` carries `error` and `traceback`. Root: `--root`, else
+`$HOTLOAD_ROOT`, else `./dcs-hotload` (right when run from the mission folder).
 
-- A command that may outlast ~9 minutes goes in a background Bash call (`run_in_background`) with a
-  matching `--timeout`: foreground calls stop at 10 minutes.
+- A command that may take more than 2 minutes needs a longer timeout on the Bash call.
 - On timeout the command stays in the inbox and still runs; its result lands in
   `user-outbox/<name>.lua` later. Read it or delete both files yourself.
-- `hotload.sh log [PATTERN]` — HOTLOAD lines since the last `ready`. `dcs.log` times are **UTC**.
+- `hotload.sh log [PATTERN]` — HOTLOAD lines since the last `ready`, from
+  `Saved Games/DCS/Logs/dcs.log` (`--log FILE` for another). `dcs.log` times are **UTC**.
 - The mission must be running and unpaused: sim time drives every wait.
 
 ## Which code is live?
@@ -57,21 +58,22 @@ mission folder).
 | `dcs-hotload.lua` | mission Restart (the boot line `dofile`s it from disk) | `hotload.sh log ready` |
 | a file the `.miz` embeds | the `.miz` rebuilt and re-opened | `hotload.sh check <name-in-miz> <file-on-disk>` |
 
+`check` compares with DCS's copy of the running mission, `%TEMP%/DCS/tempMission.miz`: a mission
+must be running on this machine.
+
 ## Limits a command runs under
 
 These come from how hotload runs a script; they hold whatever the script does.
 
 - **What a command returns is its result**: the outbox carries it. Measure inside the command and
   return the numbers.
-- **`Hotload.wait`, `waitFor`, `load` and `run` work only inside a run.** The ones that wait —
-  `wait`, `waitFor`, `run` — never inside a `pcall` or a coroutine of your own: a run is a
-  coroutine, and DCS's Lua 5.1 cannot yield across those.
+- **Where the `Hotload.*` calls work, and where the ones that pause cannot go**: the README's
+  *Writing a script*.
 - **_Stop all runs_ abandons a command mid-wait without running its cleanup.** A command that leaves
   objects in the world needs a cleanup that does not depend on reaching its end.
 - **A `timer.scheduleFunction` armed inside a run and firing after the run ended has crashed DCS**
-  (twice, DCS 2.9.30, an access violation in `lua.dll`; intermittent, cause unproven). Keep its id
-  and `timer.removeFunction` it on the normal exit path.
-- **The same script cannot run twice at once**; a second start is `refused`.
+  (an access violation in `lua.dll`; intermittent, cause unproven). Keep its id and
+  `timer.removeFunction` it on the normal exit path.
 
 ## Common mistakes
 
