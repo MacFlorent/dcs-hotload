@@ -60,7 +60,7 @@ return { live = live }
 | `Hotload.wait(s)` | ✓ | waits `s` sim-seconds |
 | `Hotload.waitFor(fn, timeout)` | ✓ | waits until `fn()` is truthy → `true`, or `timeout` s → `false` |
 | `Hotload.load(name)` | | runs `user-lib/<name>.lua` (once per run) and returns its result |
-| `Hotload.run(label)` | ✓ | runs a `user-scripts/` entry as its own run, waits, returns `{outcome, result, error}` |
+| `Hotload.run(name)` | ✓ | runs `user-scripts/<name>.lua` (`NN-` prefix included) as its own run, waits, returns `{outcome, result, error}` |
 | `Hotload.log(fmt, ...)` | | a `HOTLOAD:` line in dcs.log, stamped with the run's time and label |
 | `Hotload.say(text, s)` | | on screen, and logged |
 
@@ -116,16 +116,16 @@ return {
   clean both folders yourself.
 - After a mission restart, a command whose outbox still says `started` is not run again.
 
-To click a menu entry from the mailbox, send `return Hotload.run("selftest/wait")`: the result is
-then `{ outcome = "done", result = "waited 5 s" }`. The outbox `status` says how the command went,
-not the entry: read `outcome`.
+To run a menu entry from the mailbox, send `return Hotload.run("10-clear-arena")`: the result is
+then `{ outcome = "done", result = <what the entry returned> }`. The outbox `status` says how the
+command went, not the entry: read `outcome`.
 
 ### Mailbox client
 
 `bin/hotload.sh` drives the mailbox from a shell (Git Bash on Windows) in one call:
 
 ```bash
-bash bin/hotload.sh run --root <mission>/dcs-hotload -e 'return Hotload.run("selftest/wait")'
+bash bin/hotload.sh run --root <mission>/dcs-hotload -e 'return timer.getTime()'
 bash bin/hotload.sh log                      # HOTLOAD lines since the last ready (UTC)
 bash bin/hotload.sh check skynet-iads-compiled.lua src/scripts/skynet-iads-compiled.lua
 ```
