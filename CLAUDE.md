@@ -23,12 +23,13 @@ loaded.
 ## Commands
 
 ```
-lua5.1 test/run.lua                           # the offline suite; a name filters
-python -m unittest discover -s test/python    # the plugin's setup script
+lua5.1 test/run.lua                           # test hotload, offline; a name filters
+python -m unittest discover -s test/python    # test the plugin's setup script
 bash .github/scripts/lint.sh                  # luacheck at its pinned version, as CI runs it
 ```
 
-On Windows without `lua5.1` on `PATH`: `"/c/Program Files (x86)/Lua/5.1/lua.exe" test/run.lua`.
+The commands are Bash, from Git Bash on Windows. Lua for Windows names its interpreter `lua.exe`,
+not `lua5.1`; at its default location: `"/c/Program Files (x86)/Lua/5.1/lua.exe" test/run.lua`.
 
 ## Workflow
 
