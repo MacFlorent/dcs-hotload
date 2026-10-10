@@ -203,7 +203,7 @@ because of hotload, such as a limit a script runs under, belongs in it.
   when one is worth giving, is given with the rule and nowhere else.
 - **A rule stands on its own.** It never cites a spec, a piece of work, a commit, a person or a
   date to justify itself; that history is in `.tracker/` and the pull requests.
-- **Point as little as possible.** A pointer names a file, or a heading in prose (*like this*);
-  never a Markdown link.
+- **Point as little as possible.** A pointer into the repository names a file, or a heading in
+  prose (*like this*); never a Markdown link. Links to outside sources are fine.
 - **`CLAUDE.md` is read in every agent session**, so each of its lines must prevent a mistake.
 - Everything written in the repository is in English.
