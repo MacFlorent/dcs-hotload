@@ -2,9 +2,9 @@
 
     python -m unittest discover -s test/python
 
-The round trip over every mission shipped with DCS takes about a minute and a half, so it runs
-only on request, with HOTLOAD_TEST_SHIPPED_MISSIONS=1 and a DCS install found (DCS_INSTALL, or one
-of the usual places). Run it after changing the table reader or writer.
+The round trip over every mission that comes with DCS World takes about a minute and a half, so
+it runs only on request, with HOTLOAD_TEST_DCS_MISSIONS=1 and a DCS install found (DCS_INSTALL, or
+one of the usual places). Run it after changing the table reader or writer.
 """
 import importlib.util
 import os
@@ -93,12 +93,12 @@ class TableFormat(unittest.TestCase):
             setup.lua_load("mission = { [1] = some_function() }")
 
 
-@unittest.skipUnless(os.environ.get("HOTLOAD_TEST_SHIPPED_MISSIONS") and setup.find_dcs(None),
-                     "set HOTLOAD_TEST_SHIPPED_MISSIONS=1, with a DCS install found")
-class ShippedMissions(unittest.TestCase):
-    """Every mission DCS ships reads and writes back to the same text."""
+@unittest.skipUnless(os.environ.get("HOTLOAD_TEST_DCS_MISSIONS") and setup.find_dcs(None),
+                     "set HOTLOAD_TEST_DCS_MISSIONS=1, with a DCS install found")
+class DcsMissions(unittest.TestCase):
+    """Every mission that comes with DCS World reads and writes back to the same text."""
 
-    def test_round_trip_on_every_shipped_mission(self):
+    def test_round_trip_on_every_dcs_mission(self):
         dcs = setup.find_dcs(None)
         failures, count = [], 0
         for miz in sorted(dcs.rglob("*.miz")):
@@ -116,7 +116,7 @@ class ShippedMissions(unittest.TestCase):
                 failures.append(f"{miz}: {e}")
         self.assertGreater(count, 0)
         self.assertEqual(failures, [], f"{len(failures)} of {count} missions")
-        print(f"{count} shipped missions read and written back unchanged")
+        print(f"{count} DCS missions read and written back unchanged")
 
 
 # ── The boot line in a .miz ─────────────────────────────────────────────────────────────────────
