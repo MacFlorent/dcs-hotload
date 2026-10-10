@@ -46,5 +46,6 @@ that `./bin/hotload.sh` refuses to run. Nothing breaks: every document runs it a
 - `duration` in outbox files keeps float noise (`0.10000000000000142`).
 - A predicate failure carries no traceback; argument errors in `Hotload.*` point inside the core
   rather than at the caller's line.
-- `README.md` says `Hotload.load` cannot be called inside a `pcall` (it can; only waits cannot)
-  and that a predicate should not log (it may).
+- The guard against running a script twice keys on its label, and the two ways of starting a
+  `user-scripts/` file label it differently: a menu click drops a leading `NN-`, `Hotload.run`
+  keeps it. So `10-clear-arena.lua` can run twice at once, from F10 and from the mailbox.
