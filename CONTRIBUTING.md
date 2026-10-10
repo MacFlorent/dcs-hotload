@@ -94,8 +94,8 @@ These steps are mandatory, whatever tools you work with.
 4. **Test first** — see *Test first*.
 5. **Run the checks** — see *Running the checks*. When only DCS can show that the change works,
    say so.
-6. **Add a `CHANGELOG.md` entry** for any change to `dcs-hotload.lua` or `bin/hotload.sh` — what a
-   user installs.
+6. **Add a `CHANGELOG.md` entry** for any change to what a user installs: the files in
+   `shipped.txt`, or the plugin (`skills/`, `.claude-plugin/`).
 7. **Commit** as *Git flow* says.
 8. **Open a pull request to `main`.** Its description says what changed and why, and how it was
    verified — including "not flown" when it was not tried in DCS. Amendments to the spec ride with
@@ -157,9 +157,10 @@ What is strict is what a search relies on:
 
 ## Changelog and versioning
 
-Every pull request that changes `dcs-hotload.lua` or `bin/hotload.sh` appends an entry at the end of
-the `[Unreleased]` section of `CHANGELOG.md`. Missions carry a copy of hotload, so the changelog is
-how whoever updates one knows whether it is worth it.
+Every pull request that changes what a user installs — the files in `shipped.txt`, or the plugin
+(`skills/`, `.claude-plugin/`) — appends an entry at the end of the `[Unreleased]` section of
+`CHANGELOG.md`. The changelog is how whoever updates a mission or the plugin knows whether it is
+worth it.
 
 [Semantic versioning](https://semver.org/) of `Hotload.version`, in `dcs-hotload.lua`, which the
 `HOTLOAD: ready` log line prints. The mailbox is a public interface other tools depend on — the
@@ -167,6 +168,10 @@ how whoever updates one knows whether it is worth it.
 `Hotload.run` — so changing it incompatibly is a major version.
 
 ## Releasing
+
+A change reaches users only through a release: missions through the package, plugin users through
+the marketplace's tag. Release once `[Unreleased]` holds something users should have; a change to
+documentation or the plugin alone is a patch.
 
 A release is a GitHub release holding `dcs-hotload-<x.y.z>.zip`: a single `dcs-hotload/` folder
 with what a mission needs, extracted into its folder. `.github/scripts/package.sh` builds it from
