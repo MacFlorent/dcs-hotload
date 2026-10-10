@@ -26,7 +26,7 @@ python <this skill's folder>/scripts/hotload-setup.py status
 Exit 0: the tool is deployed with the mailbox on (a version older than the plugin's is reported,
 not counted as missing: the mission may have been tested with it), DCS lets missions use
 `io` and `lfs`, and the `.miz` loads this mission's copy. Otherwise it names what is missing:
-follow [setup.md](setup.md), which also says how to check a running mission.
+follow `setup.md`, which also says how to check a running mission.
 
 ## Send a command: one call
 
@@ -63,14 +63,13 @@ These come from how hotload runs a script; they hold whatever the script does.
 
 - **What a command returns is its result**: the outbox carries it. Measure inside the command and
   return the numbers.
-- **`Hotload.wait`, `waitFor`, `load` and `run` work only inside a run.** The ones that wait —
-  `wait`, `waitFor`, `run` — never inside a `pcall` or a coroutine of your own: a run is a
-  coroutine, and DCS's Lua 5.1 cannot yield across those.
+- **Where the `Hotload.*` calls work, and where the ones that pause cannot go**: the README's
+  *Writing a script*.
 - **_Stop all runs_ abandons a command mid-wait without running its cleanup.** A command that leaves
   objects in the world needs a cleanup that does not depend on reaching its end.
 - **A `timer.scheduleFunction` armed inside a run and firing after the run ended has crashed DCS**
-  (twice, DCS 2.9.30, an access violation in `lua.dll`; intermittent, cause unproven). Keep its id
-  and `timer.removeFunction` it on the normal exit path.
+  (an access violation in `lua.dll`; intermittent, cause unproven). Keep its id and
+  `timer.removeFunction` it on the normal exit path.
 - **The same script cannot run twice at once**; a second start is `refused`.
 
 ## Common mistakes
