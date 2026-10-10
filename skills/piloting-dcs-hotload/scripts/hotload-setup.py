@@ -1,20 +1,20 @@
 """hotload-setup.py -- set dcs-hotload up in a DCS mission folder. Python 3, standard library only.
 
-  python hotload-setup.py status    [--mission DIR] [--dcs DCS_INSTALL] [--miz FILE]
+  python hotload-setup.py status    --dcs DCS [--mission DIR] [--miz FILE]
       What the steps below would change. Exit 0 when hotload is fully set up, 2 when not.
   python hotload-setup.py deploy    [--mission DIR] [--update]
       Copy the tool into DIR/dcs-hotload/ (the release file set, .github/scripts/shipped.txt) and
       create its user-* folders. An older copy is replaced only with --update; user-* folders are
       never touched; a newer copy is left alone.
-  python hotload-setup.py unlock    [--dcs DCS_INSTALL] [--yes]
+  python hotload-setup.py unlock    --dcs DCS [--yes]
       Comment out sanitizeModule('io') and ('lfs') in the install's Scripts/MissionScripting.lua,
       keeping the original as MissionScripting.lua.bak. Changes nothing without --yes.
   python hotload-setup.py patch-miz FILE [--mission DIR] [--retarget]
       Add a MISSION START trigger that loads DIR/dcs-hotload/dcs-hotload.lua, keeping the original
       as FILE.bak. A boot line pointing at another folder is rewritten only with --retarget.
 
-DIR defaults to the current folder. The DCS install is --dcs, else the DCS_INSTALL environment
-variable, else the first of the usual locations that exists.
+DIR defaults to the current folder. DCS is the DCS World folder, the one holding
+Scripts/MissionScripting.lua: nothing guesses it.
 
 Exit codes: 0 done or nothing to do, 1 failed or refused, 2 a decision is needed (rerun with the
 flag the message names, once the user agrees), 3 usage.
@@ -37,8 +37,6 @@ from pathlib import Path
 OK, FAIL, DECIDE, USAGE = 0, 1, 2, 3
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[3]
-DCS_CANDIDATES = [r"E:\DCS World", r"C:\Program Files\Eagle Dynamics\DCS World",
-                  r"D:\DCS World", r"C:\Program Files\Eagle Dynamics\DCS World OpenBeta"]
 USER_FOLDERS = ("user-lib", "user-scripts", "user-inbox", "user-outbox")
 
 
@@ -372,12 +370,8 @@ def shipped():
     return [line.strip() for line in lines if line.strip() and not line.startswith("#")]
 
 
-def find_dcs(explicit):
-    explicit = explicit or os.environ.get("DCS_INSTALL")
-    for cand in ([explicit] if explicit else DCS_CANDIDATES):
-        if cand and (Path(cand) / "Scripts" / "MissionScripting.lua").is_file():
-            return Path(cand)
-    return None
+def is_dcs(path):
+    return (Path(path) / "Scripts" / "MissionScripting.lua").is_file()
 
 
 LOCK = re.compile(r"""^([ \t]*)(sanitizeModule\(\s*['"](io|lfs)['"]\s*\))""", re.M)
@@ -432,10 +426,10 @@ def copy_shipped(target):
 
 
 def unlock(dcs_arg, yes):
-    dcs = find_dcs(dcs_arg)
-    if not dcs:
-        say("DCS install not found: pass --dcs or set DCS_INSTALL")
+    if not is_dcs(dcs_arg):
+        say(f"not a DCS install (no Scripts/MissionScripting.lua): {dcs_arg}")
         return FAIL
+    dcs = Path(dcs_arg)
     file = dcs / "Scripts" / "MissionScripting.lua"
     locked = locked_modules(file)
     if not locked:
@@ -502,12 +496,11 @@ def status(mission, dcs_arg, miz_arg):
             say(f"mailbox off ({', '.join(missing)} missing): run deploy")
             ready = False
 
-    dcs = find_dcs(dcs_arg)
-    if not dcs:
-        say("DCS install not found: pass --dcs or set DCS_INSTALL")
+    if not is_dcs(dcs_arg):
+        say(f"not a DCS install (no Scripts/MissionScripting.lua): {dcs_arg}")
         ready = False
     else:
-        locked = locked_modules(dcs / "Scripts" / "MissionScripting.lua")
+        locked = locked_modules(Path(dcs_arg) / "Scripts" / "MissionScripting.lua")
         say("MissionScripting.lua: " + (f"{' and '.join(locked)} locked: run unlock" if locked else "unlocked"))
         ready = ready and not locked
 
@@ -532,13 +525,13 @@ def main(argv=None):
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("status")
     s.add_argument("--mission", default=".")
-    s.add_argument("--dcs")
+    s.add_argument("--dcs", required=True)
     s.add_argument("--miz")
     d = sub.add_parser("deploy")
     d.add_argument("--mission", default=".")
     d.add_argument("--update", action="store_true")
     u = sub.add_parser("unlock")
-    u.add_argument("--dcs")
+    u.add_argument("--dcs", required=True)
     u.add_argument("--yes", action="store_true")
     m = sub.add_parser("patch-miz")
     m.add_argument("miz")

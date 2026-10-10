@@ -3,14 +3,15 @@
     python -m unittest discover -s test/python
 
 The round trip over every mission that comes with DCS World takes about a minute and a half, so
-it runs only on request, with HOTLOAD_TEST_DCS_MISSIONS=1 and a DCS install found (DCS_INSTALL, or
-one of the usual places). Run it after changing the .miz reader or writer.
+it runs only when test/python/dcs-install.txt names a DCS install (a copy of
+test/python/dcs-install.example.txt). Run it after changing the .miz reader or writer.
 """
 import importlib.util
 import os
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 from pathlib import Path
 
@@ -93,13 +94,23 @@ class TableFormat(unittest.TestCase):
             setup.lua_load("mission = { [1] = some_function() }")
 
 
-@unittest.skipUnless(os.environ.get("HOTLOAD_TEST_DCS_MISSIONS") and setup.find_dcs(None),
-                     "set HOTLOAD_TEST_DCS_MISSIONS=1, with a DCS install found")
+def dcs_install():
+    """The first line of dcs-install.txt, next to this file, that is neither blank nor a # comment."""
+    config = Path(__file__).resolve().parent / "dcs-install.txt"
+    lines = config.read_text(encoding="utf-8").splitlines() if config.is_file() else []
+    return next((s for s in map(str.strip, lines) if s and not s.startswith("#")), None)
+
+
+DCS_INSTALL = dcs_install()
+
+
+@unittest.skipUnless(DCS_INSTALL, "no DCS install in test/python/dcs-install.txt")
 class DcsMissions(unittest.TestCase):
     """Every mission that comes with DCS World reads and writes back to the same text."""
 
     def test_round_trip_on_every_dcs_mission(self):
-        dcs = setup.find_dcs(None)
+        self.assertTrue(setup.is_dcs(DCS_INSTALL), f"test/python/dcs-install.txt: not a DCS install: {DCS_INSTALL}")
+        dcs = Path(DCS_INSTALL)
         failures, count = [], 0
         for miz in sorted(dcs.rglob("*.miz")):
             try:
@@ -326,6 +337,14 @@ class Unlock(Scratch):
         self.assertEqual(setup.locked_modules(self.file), [])
         self.assertEqual((self.dir / "Scripts" / "MissionScripting.lua.bak").read_text(encoding="utf-8"), STOCK)
 
+    def test_needs_the_install(self):
+        with mock.patch.dict(os.environ, {"DCS_INSTALL": str(self.dir)}):
+            self.assertEqual(setup.main(["unlock", "--yes"]), setup.USAGE)
+        self.assertEqual(setup.locked_modules(self.file), ["io", "lfs"])
+
+    def test_refuses_a_folder_that_is_not_an_install(self):
+        self.assertEqual(setup.main(["unlock", "--dcs", str(self.dir / "Scripts"), "--yes"]), setup.FAIL)
+
     def test_unlocked_changes_nothing(self):
         setup.main(["unlock", "--dcs", str(self.dir), "--yes"])
         (self.dir / "Scripts" / "MissionScripting.lua.bak").unlink()
@@ -357,6 +376,10 @@ class Status(Scratch):
 
     def test_usage(self):
         self.assertEqual(setup.main(["nonsense"]), setup.USAGE)
+
+    def test_needs_the_install(self):
+        with mock.patch.dict(os.environ, {"DCS_INSTALL": str(self.dcs)}):
+            self.assertEqual(setup.main(["status", "--mission", str(self.mission)]), setup.USAGE)
 
 
 if __name__ == "__main__":

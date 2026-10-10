@@ -11,5 +11,8 @@
 # The release package that .github/scripts/package.sh builds.
 /dist/
 
+# Each contributor's DCS install, for the round trip over the missions that come with DCS.
+/test/python/dcs-install.txt
+
 # Python bytecode, from the setup script and its tests.
 __pycache__/
