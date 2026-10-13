@@ -5,10 +5,10 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
 
 ## [Unreleased]
 
-- **`Hotload.callOnMain(fn)`** runs `fn` on the mission's main Lua state and returns like
-  `pcall`. A timer armed from a script belongs to the script's coroutine and has crashed DCS once
-  the script ended; set up timers, event handlers and frameworks such as Skynet inside
-  `callOnMain` instead.
+- **`Hotload.callOnMain(fn)`** runs `fn` on the mission's main Lua state and returns like `pcall`.
+  A timer armed from a script has crashed DCS once the script ended, most likely because it is
+  called back on the script's coroutine; set up timers, event handlers and frameworks such as
+  Skynet inside `callOnMain` instead.
 
 ## [1.2.0] — 2026-10-10
 
