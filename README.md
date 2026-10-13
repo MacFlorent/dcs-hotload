@@ -61,10 +61,11 @@ return { live = live }
 | `Hotload.waitFor(fn, timeout)` | ✓ | waits until `fn()` is truthy → `true`, or `timeout` s → `false` |
 | `Hotload.load(name)` | | runs `user-lib/<name>.lua` (once per run) and returns its result |
 | `Hotload.run(name)` | ✓ | runs `user-scripts/<name>.lua` (`NN-` prefix included) as its own run, waits, returns `{outcome, result, error}` |
+| `Hotload.callOnMain(fn)` | ✓ | runs `fn` on the mission's main Lua state, returns like `pcall` |
 | `Hotload.log(fmt, ...)` | | a `HOTLOAD:` line in dcs.log, stamped with the run's time and label |
 | `Hotload.say(text, s)` | | on screen, and logged |
 
-`wait`, `waitFor`, `load` and `run` work only in the script's own code, not in a coroutine of
+`wait`, `waitFor`, `load`, `run` and `callOnMain` work only in the script's own code, not in a coroutine of
 your own or a DCS callback. The calls that pause cannot go under a `pcall`, a `table.sort`
 comparator or a library's top level either: Lua 5.1 cannot pause across those. Under a `pcall`
 the call fails, and the script carries on unless it checks what the `pcall` returned.
@@ -74,6 +75,12 @@ timeout passes: keep it cheap, and don't wait or log in it.
 
 A missing, broken or busy entry does not make `Hotload.run` raise: `outcome` is `done`, `fail`,
 `stopped` or `refused` (no such file, does not compile, or already running).
+
+A timer armed from a script belongs to the script's coroutine, and has crashed DCS when it fired
+after the script ended. Anything that must outlive the script, such as a timer, an event handler
+or a framework like Skynet or MOOSE, is set up inside `Hotload.callOnMain`. `fn` runs on the next
+tick; it cannot pause, and of `Hotload.*` only `log` and `say` work in it, so load modules before
+the call. A raise in `fn` comes back as `false, message` and is logged with its traceback.
 
 Different scripts can run at once, taking turns at each pause; the same script cannot run twice
 at once. **Stop all runs** ends every running script. A script that never pauses
