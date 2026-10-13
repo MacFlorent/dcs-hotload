@@ -72,6 +72,15 @@ A minor version: it only adds to `Hotload.*`.
   timer armed in `fn` comes from the main state; the same timer armed directly from a run does not
   (so the test can tell). Return values and `false, message` reach the run; `callOnMain` raises
   outside a run and inside `fn`; *Stop all runs* before the next tick means `fn` never runs.
-- **In DCS, before merging:** a command loads Skynet and activates a network through `callOnMain`,
-  then ends; the mission runs several minutes without a crash; a second command deactivates the
-  network through `callOnMain`.
+- **In DCS, before merging: provoke the crash, then show `callOnMain` removes it.** Each case is
+  run in a fresh mission, and each is a pair of mailbox commands:
+  1. **Without `callOnMain`, expected to crash.** The first command arms a timer that logs and
+     re-arms itself every second, then ends. The second calls `collectgarbage("collect")`, so the
+     ended run's coroutine is collected instead of waiting for the collector, which made the crash
+     intermittent. Expected: DCS crashes, at the latest when the timer next fires. If it does not
+     crash, repeat a few times before concluding; a cause that cannot be reproduced leaves
+     `callOnMain` unproven, and that is reported.
+  2. **With `callOnMain`, expected not to crash.** The same pair, the timer armed inside `fn`.
+     Expected: the timer keeps logging for several minutes after the collection.
+  3. **The real case:** the same pair with Skynet, loaded and its network activated through
+     `callOnMain`; then a third command deactivates the network through `callOnMain`.
