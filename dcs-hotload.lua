@@ -311,21 +311,47 @@ local function probe(run, predicate)
   return value and true or false, nil
 end
 
+--- Packs values with their count, trailing nils included.
+local function pack(...)
+  return { n = select("#", ...), ... }
+end
+
+--- Calls a callOnMain function on the tick, outside any coroutine, so whatever it arms belongs
+--- to the mission's main Lua state. `current` is the run, so Hotload.log carries its label;
+--- the calls that pause still refuse, since this is not the run's coroutine. Returns the run's
+--- resume values, packed: true and fn's results, or false and the message, logged with its
+--- traceback.
+local function callMain(run, fn)
+  local failure
+  current = run
+  local results = pack(xpcall(fn, function(err)
+    failure = debug.traceback(textOf(err), 2)
+    return textOf(err)
+  end))
+  if not results[1] then
+    Hotload.log("callOnMain failed: %s", failure)
+  end
+  current = nil
+  return results
+end
+
 --- Advances one run by at most one resume.
 local function step(run, now)
-  local resumeValue = nil
+  local resume = { n = 0 }
   local pending = run.pending
 
   if pending then
-    if pending.kind == "waitFor" then
+    if pending.kind == "main" then
+      resume = callMain(run, pending.fn)
+    elseif pending.kind == "waitFor" then
       local satisfied, failure = probe(run, pending.predicate)
       if failure then
         return finishRun(run, "fail", failure)
       end
       if satisfied then
-        resumeValue = true
+        resume = { n = 1, true }
       elseif now >= pending.deadline then
-        resumeValue = false
+        resume = { n = 1, false }
       else
         return
       end
@@ -333,13 +359,13 @@ local function step(run, now)
       if now < pending.deadline then
         return
       end
-      resumeValue = true
+      resume = { n = 1, true }
     end
     run.pending = nil
   end
 
   current = run
-  local ok, result = coroutine.resume(run.co, resumeValue)
+  local ok, result = coroutine.resume(run.co, unpack(resume, 1, resume.n))
   current = nil
 
   if not ok then
@@ -350,11 +376,13 @@ local function step(run, now)
     return finishRun(run, "done", result)
   end
 
-  -- Still alive, so it yielded. Only Hotload.wait / Hotload.waitFor may yield a run.
+  -- Still alive, so it yielded. Only Hotload.wait, waitFor and callOnMain may yield a run.
   if type(result) ~= "table" or result.hotload ~= true then
     return finishRun(run, "fail", "the script yielded something that is not a Hotload wait")
   end
-  result.deadline = now + result.timeout
+  if result.kind ~= "main" then
+    result.deadline = now + result.timeout
+  end
   run.pending = result
 end
 
@@ -457,6 +485,16 @@ function Hotload.waitFor(predicate, timeout)
   currentRun("Hotload.waitFor")
   return coroutine.yield({ hotload = true, kind = "waitFor", predicate = predicate,
     timeout = timeout }) == true
+end
+
+--- Runs fn on the mission's main Lua state, on the next tick, and returns like pcall: true and
+--- what fn returned, or false and the error. Whatever fn arms (timers, event handlers, a
+--- framework's schedulers) belongs to the main state and outlives the run; armed from the run
+--- itself, it would belong to the run's coroutine. fn is not the run's code: it cannot pause.
+function Hotload.callOnMain(fn)
+  assert(type(fn) == "function", "Hotload.callOnMain: fn must be a function")
+  currentRun("Hotload.callOnMain")
+  return coroutine.yield({ hotload = true, kind = "main", fn = fn })
 end
 
 --- Runs a user-scripts/ entry as its own run (own label, guard, log lines) and waits for it to

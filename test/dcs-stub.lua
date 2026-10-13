@@ -2,6 +2,7 @@
 A minimal DCS for hotload's tests.
 
   * a sim clock: timer.getTime and timer.scheduleFunction, advanced by sim:advance(seconds);
+  * sim.armed: every timer.scheduleFunction call, and whether it came from a coroutine;
   * env and trigger that record what they are given (sim.logs, sim.screen);
   * missionCommands that builds a tree the tests can walk and click (sim:click("a/b"));
   * the real lfs and io, so hotload reads real folders made by Stub.tempRoot.
@@ -25,7 +26,8 @@ Stub.REPO = Stub.TEST_DIR .. "/.."
 
 --- A new sim, and the DCS globals hotload uses, pointing at it.
 function Stub.new()
-  local sim = setmetatable({ now = 0, scheduled = {}, logs = {}, screen = {}, roots = {} }, Stub)
+  local sim = setmetatable({ now = 0, scheduled = {}, armed = {}, logs = {}, screen = {},
+    roots = {} }, Stub)
   env = {
     info = function(text) sim.logs[#sim.logs + 1] = text end,
     warning = function(text) sim.logs[#sim.logs + 1] = text end,
@@ -36,6 +38,9 @@ function Stub.new()
     getTime = function() return sim.now end,
     scheduleFunction = function(fn, arg, t)
       sim.scheduled[#sim.scheduled + 1] = { fn = fn, arg = arg, t = t }
+      -- In DCS a coroutine is a Lua state of its own, and a timer is called back on the state
+      -- that armed it: tests check where a timer was armed from.
+      sim.armed[#sim.armed + 1] = { arg = arg, fromCoroutine = coroutine.running() ~= nil }
     end,
   }
   missionCommands = {
