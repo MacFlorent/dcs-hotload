@@ -1,6 +1,6 @@
 # Run a function on the mission's main Lua state
 
-Status: in-progress
+Status: done
 
 ## Problem
 
@@ -84,3 +84,20 @@ A minor version: it only adds to `Hotload.*`.
      Expected: the timer keeps logging for several minutes after the collection.
   3. **The real case:** the same pair with Skynet, loaded and its network activated through
      `callOnMain`; then a third command deactivates the network through `callOnMain`.
+
+## Results
+
+Flown on DCS 2.9.30, 2026-10-14, the in-DCS cases each followed by `collectgarbage("collect")`:
+
+1. A timer armed from a run beat 40 times, then crashed DCS 1.5 s after the collection, with the
+   signature above. `collectgarbage` is available to missions.
+2. The same timer armed through `callOnMain` beat 58 more times after the collection, until the
+   mission was restarted.
+3. Skynet: a network built and activated through `callOnMain` survived two collections, running
+   after the second; the same setup made in a run crashed DCS 0.36 s after the collection.
+   Activating through `callOnMain` alone was not enough: adding SAM sites already arms a HARM-scan
+   timer per site. Hence the guidance: anything that may arm a timer or register an event handler
+   goes through `callOnMain`, a framework's whole setup when unsure.
+
+Whether an event handler registered from a run crashes the same way was not tested; the guidance
+covers it anyway.
