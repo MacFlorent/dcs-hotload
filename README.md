@@ -76,12 +76,13 @@ timeout passes: keep it cheap, and don't wait or log in it.
 A missing, broken or busy entry does not make `Hotload.run` raise: `outcome` is `done`, `fail`,
 `stopped` or `refused` (no such file, does not compile, or already running).
 
-A timer armed from a script has crashed DCS when it fired after the script ended, most likely
-because DCS calls it back on the script's coroutine, which is gone by then. Anything that must
-outlive the script, such as a timer, an event handler or a framework like Skynet or MOOSE, is set
-up inside `Hotload.callOnMain`. `fn` runs on the next tick; it cannot pause, and of `Hotload.*`
-only `log` and `say` work in it, so load modules before the call. A raise in `fn` comes back as
-`false, message` and is logged with its traceback.
+A timer armed from a script is called back on the script's coroutine, and crashes DCS once the
+script has ended and its coroutine has been collected, which can be seconds or minutes later.
+Anything that may arm a timer or register an event handler goes through `Hotload.callOnMain`: in a
+framework such as Skynet or MOOSE, that can be any call, not only the one that starts it, so when
+unsure, put the whole setup inside it. `fn` runs on the next tick; it cannot pause, and of
+`Hotload.*` only `log` and `say` work in it, so load modules before the call. A raise in `fn`
+comes back as `false, message` and is logged with its traceback.
 
 Different scripts can run at once, taking turns at each pause; the same script cannot run twice
 at once. **Stop all runs** ends every running script. A script that never pauses
