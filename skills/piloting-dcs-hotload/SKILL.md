@@ -76,9 +76,9 @@ These come from how hotload runs a script; they hold whatever the script does.
   *Writing a script*.
 - **_Stop all runs_ abandons a command mid-wait without running its cleanup.** A command that leaves
   objects in the world needs a cleanup that does not depend on reaching its end.
-- **A `timer.scheduleFunction` armed inside a run and firing after the run ended has crashed DCS**
-  (an access violation in `lua.dll`; intermittent, cause unproven). Keep its id and
-  `timer.removeFunction` it on the normal exit path.
+- **Anything that may arm a timer or register an event handler goes through
+  `Hotload.callOnMain`**, even inside a framework's setup: the README's *Writing a script* says
+  why and how.
 
 ## Common mistakes
 

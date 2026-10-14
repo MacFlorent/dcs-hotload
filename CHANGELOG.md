@@ -5,6 +5,11 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
 
 ## [Unreleased]
 
+- **`Hotload.callOnMain(fn)`** runs `fn` on the mission's main Lua state and returns like `pcall`.
+  A timer armed from a script is called back on the script's coroutine and crashes DCS once that
+  coroutine has been collected; set up timers, event handlers and frameworks such as Skynet inside
+  `callOnMain` instead. The skill says so in place of its advice to cancel such a timer.
+
 ## [1.2.0] — 2026-10-10
 
 - **Setup takes the DCS install as a parameter**: `hotload-setup.py status` and `unlock` require
