@@ -76,9 +76,8 @@ These come from how hotload runs a script; they hold whatever the script does.
   *Writing a script*.
 - **_Stop all runs_ abandons a command mid-wait without running its cleanup.** A command that leaves
   objects in the world needs a cleanup that does not depend on reaching its end.
-- **Anything that may arm a timer or register an event handler goes through
-  `Hotload.callOnMain`**, even inside a framework's setup: the README's *Writing a script* says
-  why and how.
+- **Anything that may arm a timer or register an event handler, directly or through a library,
+  goes through `Hotload.callOnMain`**: the README's *Writing a script* says why and how.
 
 ## Common mistakes
 

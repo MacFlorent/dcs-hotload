@@ -9,6 +9,8 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
   A timer armed from a script is called back on the script's coroutine and crashes DCS once that
   coroutine has been collected; set up timers, event handlers and frameworks such as Skynet inside
   `callOnMain` instead. The skill says so in place of its advice to cancel such a timer.
+- **A self-test for `callOnMain`**, `selftest/call-on-main`: a timer armed through it keeps
+  beating after the ended run's coroutine has been collected. Run it after a DCS update.
 
 ## [1.2.0] — 2026-10-10
 
