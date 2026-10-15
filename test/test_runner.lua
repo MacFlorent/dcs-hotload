@@ -42,6 +42,13 @@ function TestRunner:testARuntimeErrorFailsWithATraceback()
   lu.assertStrContains(line, "stack traceback")
 end
 
+function TestRunner:testCallOnMainArmsATimerThatOutlivesTheRun()
+  clickAndRun("selftest/call-on-main", 12)
+  lu.assertNotNil(sim:line("done selftest/call-on-main (0.2s) -> true"))
+  lu.assertNotNil(sim:line("call-on-main: collected"))
+  lu.assertNotNil(sim:line("call-on-main: beat 10 of 10"))
+end
+
 function TestRunner:testASyntaxErrorIsRefusedWithoutARun()
   clickAndRun("selftest/syntax-error")
   lu.assertStrContains(sim:line("refused selftest/syntax-error"), "unexpected symbol")
