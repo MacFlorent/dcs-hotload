@@ -13,6 +13,15 @@ results saved so assertions can be re-run offline; scenarios clean up their own 
 helpers ship as a `user-lib/` package. Open: name and location, result archiving without a wall
 clock, a preflight check, how existing in-sim suites move to it, whether it ships a skill.
 
+Lessons from a campaign of about 300 runs driven through the mailbox (SkynetMunitionTests, October
+2026): each run appends its own result row, so a crash or a restart costs at most one run and the
+campaign resumes by skipping what is recorded; every command gets a unique mailbox name, since a
+reused name lets a stale waiter pick up a later result; a run checks its own preconditions (the
+site loaded, its options reset) before a "no" is trusted; a framework is driven through
+`Hotload.callOnMain`; on Windows, a background driver that Claude Code stops keeps running and is
+killed by process id, and a bash driver is never edited while it runs, since bash reads it as it
+goes.
+
 ## An MCP front end
 
 Deferred: the mailbox driven with plain file tools and `bin/hotload.sh` has been enough. Worth it
@@ -46,6 +55,3 @@ that `./bin/hotload.sh` refuses to run. Nothing breaks: every document runs it a
 - `duration` in outbox files keeps float noise (`0.10000000000000142`).
 - A predicate failure carries no traceback; argument errors in `Hotload.*` point inside the core
   rather than at the caller's line.
-- The guard against running a script twice keys on its label, and the two ways of starting a
-  `user-scripts/` file label it differently: a menu click drops a leading `NN-`, `Hotload.run`
-  keeps it. So `10-clear-arena.lua` can run twice at once, from F10 and from the mailbox.
