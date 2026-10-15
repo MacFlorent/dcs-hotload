@@ -80,9 +80,11 @@ A timer armed from a script is called back on the script's coroutine, and crashe
 script has ended and its coroutine has been collected, which can be seconds or minutes later.
 Anything that may arm a timer or register an event handler goes through `Hotload.callOnMain`: in a
 framework such as Skynet or MOOSE, that can be any call, not only the one that starts it, so when
-unsure, put the whole setup inside it. `fn` runs on the next tick; it cannot pause, and of
-`Hotload.*` only `log` and `say` work in it, so load modules before the call. A raise in `fn`
-comes back as `false, message` and is logged with its traceback.
+unsure, put the whole setup inside it. The framework's own code is still loaded by the mission
+(see *Libraries in `user-lib/`*); `callOnMain` is for the calls that build, start and stop its
+objects. `fn` runs on the next tick; it cannot pause, and of `Hotload.*` only `log` and `say` work
+in it, so load modules before the call. A raise in `fn` comes back as `false, message` and is
+logged with its traceback.
 
 Different scripts can run at once, taking turns at each pause; the same script cannot run twice
 at once. **Stop all runs** ends every running script. A script that never pauses
