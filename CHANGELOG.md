@@ -11,6 +11,8 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
   `callOnMain` instead. The skill says so in place of its advice to cancel such a timer.
 - **A self-test for `callOnMain`**, `selftest/call-on-main`: a timer armed through it keeps
   beating after the ended run's coroutine has been collected. Run it after a DCS update.
+- **The skill says how to drop an interrupted command:** deleting only its outbox file runs it
+  again; deleting both its files drops it.
 
 ## [1.2.0] — 2026-10-10
 

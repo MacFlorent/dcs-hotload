@@ -83,6 +83,6 @@ These come from how hotload runs a script; they hold whatever the script does.
 
 | Symptom | Cause |
 |---|---|
-| Outbox stuck on `started` after a mission restart | by design: it never finished; delete it to rerun |
+| Outbox stuck on `started` after a mission restart | by design: it never finished; delete the outbox file to rerun it, or both files to drop it |
 | A command never runs | its outbox file already exists (delete it), or its name starts with `_` |
 | A change to `dcs-hotload.lua` has no effect | the mission was not restarted |
