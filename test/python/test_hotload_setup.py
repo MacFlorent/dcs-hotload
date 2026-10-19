@@ -256,8 +256,9 @@ class Deploy(Scratch):
         self.assertEqual(setup.main(["deploy", "--mission", str(self.dir)]), setup.OK)
         for path in setup.shipped():
             self.assertTrue((self.deployed() / path).exists(), path)
-        for folder in ("user-lib", "user-scripts", "user-inbox", "user-outbox"):
+        for folder in ("user-lib", "user-f10", "user-inbox", "user-outbox"):
             self.assertTrue((self.deployed() / folder).is_dir(), folder)
+        self.assertFalse((self.deployed() / "user-scripts").exists())
         self.assertFalse((self.deployed() / "skills").exists())
         self.assertEqual(setup.lua_version(self.deployed() / "dcs-hotload.lua"), setup.plugin_version())
 
