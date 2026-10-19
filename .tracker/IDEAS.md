@@ -48,8 +48,6 @@ that `./bin/hotload.sh` refuses to run. Nothing breaks: every document runs it a
   empty outbox.
 - Results deeper than about 197 levels, or with more than about 131,000 distinct values, are
   written but cannot be read back by `dofile`.
-- `Hotload.run` inside a `pcall` starts the child run, then fails to wait for it.
-- A `user-scripts/inbox/` folder would share labels with inbox commands.
 - Each poll stats every inbox file twice.
 - An inbox or outbox folder that exists but cannot be read is reported as missing.
 - `duration` in outbox files keeps float noise (`0.10000000000000142`).
