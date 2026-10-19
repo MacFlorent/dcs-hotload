@@ -54,10 +54,10 @@ function TestRoot:testAPathToAMissingFileIsNotTrusted()
   lu.assertNotNil(sim:line("cannot tell where dcs-hotload.lua is"))
 end
 
-function TestRoot:testAnUnreadableUserScriptsFolderIsReported()
+function TestRoot:testAnUnreadableF10FolderIsReported()
   local sim = Stub.new()
   sim:load(REPO .. "/no-such-root")
-  lu.assertStrContains(sim:line("cannot read"), "user-scripts")
+  lu.assertStrContains(sim:line("cannot read"), "user-f10")
   lu.assertStrContains(sim.screen[1], "dcs-hotload:")
 end
 

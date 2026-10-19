@@ -29,7 +29,7 @@ function TestMailbox:setUp()
   root = Stub.tempRoot("mailbox", {
     ["user-inbox/"] = true,
     ["user-outbox/"] = true,
-    ["user-scripts/"] = true,
+    ["user-f10/"] = true,
   })
   sim:load(root)
 end
@@ -156,14 +156,14 @@ TestMailboxSetup = {}
 
 function TestMailboxSetup:testNoInboxFolderMeansNoMailboxAndNoMessage()
   local s = Stub.new()
-  s:load(Stub.tempRoot("nobox", { ["user-scripts/"] = true }))
+  s:load(Stub.tempRoot("nobox", { ["user-f10/"] = true }))
   lu.assertStrContains(s:line("HOTLOAD: ready"), "mailbox off")
   lu.assertEquals(s.screen, { "dcs-hotload " .. Hotload.version .. " ready, mailbox off" })
 end
 
 function TestMailboxSetup:testAnInboxWithoutAnOutboxIsReported()
   local s = Stub.new()
-  s:load(Stub.tempRoot("halfbox", { ["user-scripts/"] = true, ["user-inbox/"] = true }))
+  s:load(Stub.tempRoot("halfbox", { ["user-f10/"] = true, ["user-inbox/"] = true }))
   lu.assertStrContains(s:line("HOTLOAD: ready"), "mailbox off")
   lu.assertNotNil(s:line("user-outbox"))
 end

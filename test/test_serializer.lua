@@ -5,7 +5,7 @@ local lu = dofile(dir .. "/luaunit.lua")
 local Stub = dofile(dir .. "/dcs-stub.lua")
 
 local sim = Stub.new()
-sim:load(Stub.tempRoot("serializer", { ["user-scripts/"] = true }))
+sim:load(Stub.tempRoot("serializer", { ["user-f10/"] = true }))
 local serialize = assert(Hotload._serialize, "Hotload._serialize is the serializer's test hook")
 
 local function roundTrip(value)

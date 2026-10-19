@@ -7,7 +7,7 @@ Load once at mission start:
 
 Folders next to this file:
   user-lib/       mission-owned, re-read through Hotload.load, once per run
-  user-scripts/   mission-owned, re-read on every click; one file = one menu command
+  user-f10/       mission-owned, re-read on every click; one file = one F10 command
   user-inbox/     optional; each *.lua saved here runs once
   user-outbox/    optional; the outcome of each inbox file
 
@@ -245,7 +245,7 @@ end
 -- ── Runner ──────────────────────────────────────────────────────────────────────────────────
 
 --[[
-One run = one execution of one user-scripts/ file, as a coroutine resumed on a shared tick.
+One run = one execution of one user-f10/ file or inbox command, as a coroutine resumed on a shared tick.
 coroutine.resume IS the protected call for script code: a raise ends the run, never the tick.
 Lua 5.1 cannot yield across pcall, so nothing between the tick and a script's yield may be a
 pcall.
@@ -718,14 +718,15 @@ local function buildMenu()
     missionCommands.removeItem(menuRoot)
   end
   menuRoot = missionCommands.addSubMenu(Hotload.menu or "Hotload")
-  local scriptsDir = Hotload.root .. "/user-scripts"
+  local f10Dir = Hotload.root .. "/user-f10"
   -- A wrong root would otherwise give a menu holding only Refresh and Stop, and no reason.
-  local _, _, err = listDir(scriptsDir)
+  local _, _, err = listDir(f10Dir)
   if err then
-    fail("cannot read " .. scriptsDir .. " -- " .. err)
+    fail("cannot read " .. f10Dir .. " -- " .. err)
   end
   -- Two rows of the root page are kept for Refresh and Stop, so they never move into "More...".
-  buildLevel(scriptsDir, "", menuRoot, MENU_ROWS - 2)
+  -- Labels start with f10/, so an entry never shares one with an inbox command.
+  buildLevel(f10Dir, "f10/", menuRoot, MENU_ROWS - 2)
   missionCommands.addCommand("Refresh menu", menuRoot, function()
     buildMenu()
     Hotload.say("menu refreshed")
