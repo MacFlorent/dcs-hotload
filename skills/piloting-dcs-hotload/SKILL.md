@@ -1,6 +1,6 @@
 ---
 name: piloting-dcs-hotload
-description: Use when setting up dcs-hotload in a DCS mission folder (deploying or updating the tool, checking that the .miz loads it), or when running Lua in a live DCS mission through it (user-inbox / user-outbox, Hotload.run, bin/hotload.sh).
+description: Use when setting up dcs-hotload in a DCS mission folder (deploying or updating the tool, checking that the .miz loads it), or when running Lua in a live DCS mission through it (user-inbox / user-outbox, bin/hotload.sh).
 ---
 
 # Piloting DCS through dcs-hotload
@@ -44,8 +44,7 @@ bash dcs-hotload/bin/hotload.sh run --name lane-1 --timeout 1800 my-command.lua
 ```
 
 Prints the outbox result and cleans the mailbox. Exit 0 done, 1 fail/refused/stopped, 2 timeout,
-3 usage: the command's own outcome. When the command is `return Hotload.run(...)`, the entry's
-outcome is `result.outcome`. A `fail` carries `error` and `traceback`. Root: `--root`, else
+3 usage: the command's own outcome. A `fail` carries `error` and `traceback`. Root: `--root`, else
 `$HOTLOAD_ROOT`, else `./dcs-hotload` (right when run from the mission folder).
 
 - A command that may take more than 2 minutes needs a longer timeout on the Bash call.
@@ -59,7 +58,7 @@ outcome is `result.outcome`. A `fail` carries `error` and `traceback`. Root: `--
 
 | You changed | It is live after | Verify |
 |---|---|---|
-| `user-lib/`, `user-scripts/`, an inbox command | nothing (re-read every run) | — |
+| `user-lib/`, `user-f10/`, an inbox command | nothing (re-read every run) | — |
 | `dcs-hotload.lua` | mission Restart (the boot line `dofile`s it from disk) | `hotload.sh log ready` |
 | a file the `.miz` embeds | the `.miz` rebuilt and re-opened | `hotload.sh check <name-in-miz> <file-on-disk>` |
 

@@ -19,7 +19,7 @@ python <skill>/scripts/hotload-setup.py deploy
 ```
 
 Copies the tool into `dcs-hotload/` — the release package's files, nothing else — and creates
-`user-lib/`, `user-scripts/`, `user-inbox/` and `user-outbox/` (the last two turn the mailbox on).
+`user-lib/`, `user-f10/`, `user-inbox/` and `user-outbox/` (the last two turn the mailbox on).
 Never touches the `user-*` folders of an existing copy.
 
 A mission already holding an **older** version returns 2: a mission keeps the version it was

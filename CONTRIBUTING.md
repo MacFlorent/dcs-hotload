@@ -64,7 +64,7 @@ it:
 | `test/python/` | Python 3 and CI | the plugin's setup script: the `.miz` reader and writer, the boot trigger, deploying, unlocking |
 | `examples/` self-tests | inside DCS, copied into a mission | what a stub cannot show: how DCS renders the menu, real sim timing, how DCS names a loaded chunk |
 
-To run the self-tests, copy `examples/user-scripts/selftest/` into a mission's `user-scripts/`
+To run the self-tests, copy `examples/user-f10/selftest/` into a mission's `user-f10/`
 and `examples/user-lib/*` into its `user-lib/`, then click each entry: every script states its
 expected log line at the top. Run them after a DCS update, or after a change the stub cannot judge.
 
@@ -161,8 +161,8 @@ worth it.
 
 [Semantic versioning](https://semver.org/) of `Hotload.version`, in `dcs-hotload.lua`, which the
 `HOTLOAD: ready` log line prints. The mailbox is a public interface other tools depend on — the
-`user-inbox/` and `user-outbox/` folders, the outbox file format and its status values,
-`Hotload.run` — so changing it incompatibly is a major version.
+`user-inbox/` and `user-outbox/` folders, the outbox file format and its status values — so
+changing it incompatibly is a major version.
 
 ## Releasing
 
