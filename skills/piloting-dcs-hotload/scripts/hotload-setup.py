@@ -410,8 +410,13 @@ def deploy(mission, update):
     else:
         copy_shipped(target)
         say(f"deployed dcs-hotload {want} into {target}")
+    # An empty user-f10/ beside a mission's user-scripts/ would hide hotload's own rename message.
+    renaming = (target / "user-scripts").is_dir() and not (target / "user-f10").exists()
     for folder in USER_FOLDERS:
-        (target / folder).mkdir(exist_ok=True)
+        if not (renaming and folder == "user-f10"):
+            (target / folder).mkdir(exist_ok=True)
+    if renaming:
+        say(f"rename user-scripts/ to user-f10/ in {target}: the F10 menu reads only user-f10/")
     return OK
 
 
