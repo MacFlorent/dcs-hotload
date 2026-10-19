@@ -1,5 +1,5 @@
---- The runner: clicks, waits, errors, the duplicate-run guard, Stop all, Hotload.load and
---- Hotload.run. Uses examples/ as the hotload root, so the shipped self-tests are exercised too.
+--- The runner: clicks, waits, errors, the duplicate-run guard, Stop all and Hotload.load.
+--- Uses examples/ as the hotload root, so the shipped self-tests are exercised too.
 
 local dir = debug.getinfo(1, "S").source:match("^@(.+)[\\/]") or "."
 local lu = dofile(dir .. "/luaunit.lua")
@@ -132,19 +132,6 @@ function TestRunner:testLibraryCyclesAndMissingLibrariesFailTheRun()
   clickAndRun("selftest/load-missing")
   lu.assertStrContains(sim:line("FAIL selftest/load-cycle"), "load cycle: selftest-cycle-a")
   lu.assertStrContains(sim:line("FAIL selftest/load-missing"), "load no-such-lib")
-end
-
-function TestRunner:testRunStartsEachEntryAsItsOwnRunAndWaits()
-  clickAndRun("selftest/run-chain", 2)
-  lu.assertNotNil(sim:line("start selftest/return-value"))
-  lu.assertStrContains(sim:line("done selftest/run-chain"),
-    '{broken = "fail", missing = "refused", ok = "done", value = {answer = 42, ok = true}}')
-end
-
-function TestRunner:testRunningYourselfIsRefusedNotDeadlocked()
-  clickAndRun("selftest/run-self", 2)
-  lu.assertStrContains(sim:line("done selftest/run-self"),
-    '{error = "selftest/run-self is still running", outcome = "refused"}')
 end
 
 function TestRunner:testASecondLoadDoesNothingEvenAfterTheConfigLineRunsAgain()

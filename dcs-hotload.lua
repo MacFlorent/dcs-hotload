@@ -397,7 +397,7 @@ local function tick(_, now)
       local ok, err = pcall(step, run, now)
       if not ok then
         -- A bug in the runner itself. End the run as a failure rather than leave it wedged:
-        -- a Hotload.run caller waits on its outcome, and an inbox command on its outbox file.
+        -- an inbox command waits on its outbox file.
         runs[run.label] = nil
         current = nil
         run.outcome = "fail"
@@ -495,22 +495,6 @@ function Hotload.callOnMain(fn)
   assert(type(fn) == "function", "Hotload.callOnMain: fn must be a function")
   currentRun("Hotload.callOnMain")
   return coroutine.yield({ hotload = true, kind = "main", fn = fn })
-end
-
---- Runs a user-scripts/ entry as its own run (own label, guard, log lines) and waits for it to
---- end. A missing, broken or already-running entry is not an error here: it comes back as
---- outcome "refused", and the caller decides what that means.
-function Hotload.run(label)
-  assert(type(label) == "string" and label ~= "", "Hotload.run: label must be a non-empty string")
-  currentRun("Hotload.run")
-  local child, reason = startRun(Hotload.root .. "/user-scripts/" .. label .. ".lua", label)
-  if not child then
-    return { outcome = "refused", error = reason }
-  end
-  Hotload.waitFor(function()
-    return child.outcome ~= nil
-  end, math.huge)
-  return { outcome = child.outcome, result = child.result, error = child.error }
 end
 
 --- Abandons every active run. Menu callbacks never run during the tick, so no run is
