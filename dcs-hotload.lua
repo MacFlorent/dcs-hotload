@@ -721,7 +721,10 @@ local function buildMenu()
   local f10Dir = Hotload.root .. "/user-f10"
   -- A wrong root would otherwise give a menu holding only Refresh and Stop, and no reason.
   local _, _, err = listDir(f10Dir)
-  if err then
+  local old = lfs.attributes(Hotload.root .. "/user-scripts")
+  if err and old and old.mode == "directory" then
+    fail("user-scripts/ is now user-f10/ -- rename it")
+  elseif err then
     fail("cannot read " .. f10Dir .. " -- " .. err)
   end
   -- Two rows of the root page are kept for Refresh and Stop, so they never move into "More...".

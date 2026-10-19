@@ -61,6 +61,35 @@ function TestRoot:testAnUnreadableF10FolderIsReported()
   lu.assertStrContains(sim.screen[1], "dcs-hotload:")
 end
 
+function TestRoot:testOnlyUserScriptsSaysToRenameIt()
+  local sim = Stub.new()
+  sim:load(Stub.tempRoot("oldfolder", { ["user-scripts/a.lua"] = "return 1" }))
+  lu.assertNotNil(sim:line("user-scripts/ is now user-f10/ -- rename it"))
+  lu.assertEquals(sim:count("cannot read"), 0)
+  lu.assertStrContains(sim.screen[1], "dcs-hotload: user-scripts/ is now user-f10/")
+end
+
+function TestRoot:testBothFoldersSayNothingAboutTheRename()
+  local sim = Stub.new()
+  sim:load(Stub.tempRoot("bothfolders", { ["user-scripts/a.lua"] = "return 1", ["user-f10/b.lua"] = "return 2" }))
+  lu.assertEquals(sim:count("is now user-f10"), 0)
+  sim:click("b")
+  sim:advance(0.5)
+  lu.assertNotNil(sim:line("done f10/b"))
+end
+
+function TestRoot:testRenamingTheFolderThenRefreshingBuildsTheMenu()
+  local sim = Stub.new()
+  local root = Stub.tempRoot("renamed", { ["user-scripts/a.lua"] = "return 1" })
+  sim:load(root)
+  assert(os.rename(root .. "/user-scripts", root .. "/user-f10"))
+  sim:click("Refresh menu")
+  lu.assertEquals(sim:count("is now user-f10"), 1)
+  sim:click("a")
+  sim:advance(0.5)
+  lu.assertNotNil(sim:line("done f10/a"))
+end
+
 function TestRoot:testMissingSanitisationEditStopsWithAMessage()
   local sim = Stub.new()
   local realIo = io
