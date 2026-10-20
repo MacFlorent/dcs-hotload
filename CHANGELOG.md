@@ -5,6 +5,16 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
 
 ## [Unreleased]
 
+- **Breaking: `user-scripts/` is now `user-f10/`**, read only by the F10 menu: rename the folder.
+  Hotload says so when it finds only the old one. F10 runs are labelled `f10/<path>` in dcs.log,
+  so an entry never shares a label with an inbox command. Setup deploys `user-f10/`, and an update
+  over `user-scripts/` says to rename it.
+- **Breaking: `Hotload.run` is removed.** Send what the entry contains, or call into `user-lib/`;
+  a step that may fail without failing the rest is a separate mailbox command.
+- **A library that waits at its top level says so**: `load <name>: a library's top level cannot
+  wait ... -- move it into a function`, in place of Lua's "attempt to yield across
+  metamethod/C-call boundary".
+
 ## [1.3.0] — 2026-10-15
 
 - **`Hotload.callOnMain(fn)`** runs `fn` on the mission's main Lua state and returns like `pcall`.

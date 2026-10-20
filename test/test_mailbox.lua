@@ -29,8 +29,7 @@ function TestMailbox:setUp()
   root = Stub.tempRoot("mailbox", {
     ["user-inbox/"] = true,
     ["user-outbox/"] = true,
-    ["user-scripts/hello.lua"] = "return { hi = true }",
-    ["user-scripts/slow.lua"] = "Hotload.wait(100) return 1",
+    ["user-f10/"] = true,
   })
   sim:load(root)
 end
@@ -54,13 +53,13 @@ function TestMailbox:testACommandRunsOnceAndItsOutboxHoldsTheResult()
   lu.assertEquals(sim:count("start inbox/c1"), 1)
 end
 
-function TestMailbox:testHotloadRunReturnsTheEntrysOutcome()
+function TestMailbox:testHotloadRunIsGoneAndACommandCallingItFails()
+  lu.assertNil(Hotload.run)
   inbox("c2.lua", 'return Hotload.run("hello")')
   sim:advance(4)
   local r = outbox("c2.lua")
-  lu.assertEquals(r.status, "done")
-  lu.assertEquals(r.result.outcome, "done")
-  lu.assertEquals(r.result.result, { hi = true })
+  lu.assertEquals(r.status, "fail")
+  lu.assertStrContains(r.error, "run")
 end
 
 function TestMailbox:testFailuresAndRefusalsAreReported()
@@ -139,7 +138,7 @@ function TestMailbox:testUnwritableValuesStillGiveAReadableOutbox()
 end
 
 function TestMailbox:testStopAllMarksACommandStopped()
-  inbox("c11.lua", 'return Hotload.run("slow")')
+  inbox("c11.lua", "Hotload.wait(100) return 1")
   sim:advance(4)
   sim:click("Stop all runs")
   lu.assertEquals(outbox("c11.lua").status, "stopped")
@@ -157,14 +156,14 @@ TestMailboxSetup = {}
 
 function TestMailboxSetup:testNoInboxFolderMeansNoMailboxAndNoMessage()
   local s = Stub.new()
-  s:load(Stub.tempRoot("nobox", { ["user-scripts/"] = true }))
+  s:load(Stub.tempRoot("nobox", { ["user-f10/"] = true }))
   lu.assertStrContains(s:line("HOTLOAD: ready"), "mailbox off")
   lu.assertEquals(s.screen, { "dcs-hotload " .. Hotload.version .. " ready, mailbox off" })
 end
 
 function TestMailboxSetup:testAnInboxWithoutAnOutboxIsReported()
   local s = Stub.new()
-  s:load(Stub.tempRoot("halfbox", { ["user-scripts/"] = true, ["user-inbox/"] = true }))
+  s:load(Stub.tempRoot("halfbox", { ["user-f10/"] = true, ["user-inbox/"] = true }))
   lu.assertStrContains(s:line("HOTLOAD: ready"), "mailbox off")
   lu.assertNotNil(s:line("user-outbox"))
 end

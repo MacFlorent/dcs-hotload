@@ -27,36 +27,52 @@ TestMenu = {}
 function TestMenu:testLabelsOrderAndSkippedNames()
   local sim = Stub.new()
   sim:load(Stub.tempRoot("labels", {
-    ["user-scripts/20-second.lua"] = "return 2",
-    ["user-scripts/10-first.lua"] = "return 1",
-    ["user-scripts/_draft.lua"] = "return 0",
-    ["user-scripts/notes.txt"] = "x",
-    ["user-scripts/folder/a.lua"] = "return 3",
-    ["user-scripts/_old/b.lua"] = "return 4",
+    ["user-f10/20-second.lua"] = "return 2",
+    ["user-f10/10-first.lua"] = "return 1",
+    ["user-f10/_draft.lua"] = "return 0",
+    ["user-f10/notes.txt"] = "x",
+    ["user-f10/folder/a.lua"] = "return 3",
+    ["user-f10/_old/b.lua"] = "return 4",
   }))
   lu.assertEquals(names(sim:menu()), { "folder", "first", "second", "Refresh menu", "Stop all runs" })
   sim:click("first")
   sim:advance(0.5)
-  lu.assertNotNil(sim:line("done 10-first"))   -- the run label is the file path, prefix included
+  lu.assertNotNil(sim:line("done f10/10-first"))   -- the run label is f10/ and the file path, prefix included
 end
 
 function TestMenu:testTheRootMenuNameCanBeSet()
   local sim = Stub.new()
-  sim:load(Stub.tempRoot("menuname", { ["user-scripts/"] = true }), { menu = "My Tests" })
+  sim:load(Stub.tempRoot("menuname", { ["user-f10/"] = true }), { menu = "My Tests" })
   lu.assertEquals(sim:menu().name, "My Tests")
+end
+
+function TestMenu:testAnF10EntryAndAnInboxCommandOfTheSameNameBothRun()
+  local sim = Stub.new()
+  local root = Stub.tempRoot("samename", {
+    ["user-f10/inbox/x.lua"] = "Hotload.wait(5) return 1",
+    ["user-inbox/"] = true, ["user-outbox/"] = true,
+  })
+  sim:load(root)
+  Stub.write(root .. "/user-inbox/x.lua", "Hotload.wait(5) return 2")
+  sim:advance(3)                     -- the inbox command is picked up and running
+  sim:click("inbox/x")
+  sim:advance(0.5)
+  lu.assertNotNil(sim:line("start f10/inbox/x"))
+  lu.assertNotNil(sim:line("start inbox/x"))
+  lu.assertEquals(sim:count("is still running"), 0)
 end
 
 function TestMenu:testRefreshPicksUpNewFiles()
   local sim = Stub.new()
-  local root = Stub.tempRoot("refresh", { ["user-scripts/a.lua"] = "return 1" })
+  local root = Stub.tempRoot("refresh", { ["user-f10/a.lua"] = "return 1" })
   sim:load(root)
-  Stub.write(root .. "/user-scripts/b.lua", "return 2")
+  Stub.write(root .. "/user-f10/b.lua", "return 2")
   lu.assertError(function() sim:find("b") end)
   sim:click("Refresh menu")
   lu.assertEquals(#sim.roots, 1)
   sim:click("b")
   sim:advance(0.5)
-  lu.assertNotNil(sim:line("done b"))
+  lu.assertNotNil(sim:line("done f10/b"))
 end
 
 function TestMenu:testNoLevelEverHoldsMoreThanTenEntries()
@@ -64,8 +80,8 @@ function TestMenu:testNoLevelEverHoldsMoreThanTenEntries()
   local function folder(name, count)
     for i = 1, count do
       local file = string.format("f%02d", i)
-      files["user-scripts/" .. name .. "/" .. file .. ".lua"] = "return 1"
-      expected[#expected + 1] = name .. "/" .. file
+      files["user-f10/" .. name .. "/" .. file .. ".lua"] = "return 1"
+      expected[#expected + 1] = "f10/" .. name .. "/" .. file
     end
   end
   folder("a9", 9)

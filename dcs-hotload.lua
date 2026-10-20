@@ -7,7 +7,7 @@ Load once at mission start:
 
 Folders next to this file:
   user-lib/       mission-owned, re-read through Hotload.load, once per run
-  user-scripts/   mission-owned, re-read on every click; one file = one menu command
+  user-f10/       mission-owned, re-read on every click; one file = one F10 command
   user-inbox/     optional; each *.lua saved here runs once
   user-outbox/    optional; the outcome of each inbox file
 
@@ -245,7 +245,7 @@ end
 -- ── Runner ──────────────────────────────────────────────────────────────────────────────────
 
 --[[
-One run = one execution of one user-scripts/ file, as a coroutine resumed on a shared tick.
+One run = one execution of one user-f10/ file or inbox command, as a coroutine resumed on a shared tick.
 coroutine.resume IS the protected call for script code: a raise ends the run, never the tick.
 Lua 5.1 cannot yield across pcall, so nothing between the tick and a script's yield may be a
 pcall.
@@ -397,7 +397,7 @@ local function tick(_, now)
       local ok, err = pcall(step, run, now)
       if not ok then
         -- A bug in the runner itself. End the run as a failure rather than leave it wedged:
-        -- a Hotload.run caller waits on its outcome, and an inbox command on its outbox file.
+        -- an inbox command waits on its outbox file.
         runs[run.label] = nil
         current = nil
         run.outcome = "fail"
@@ -497,22 +497,6 @@ function Hotload.callOnMain(fn)
   return coroutine.yield({ hotload = true, kind = "main", fn = fn })
 end
 
---- Runs a user-scripts/ entry as its own run (own label, guard, log lines) and waits for it to
---- end. A missing, broken or already-running entry is not an error here: it comes back as
---- outcome "refused", and the caller decides what that means.
-function Hotload.run(label)
-  assert(type(label) == "string" and label ~= "", "Hotload.run: label must be a non-empty string")
-  currentRun("Hotload.run")
-  local child, reason = startRun(Hotload.root .. "/user-scripts/" .. label .. ".lua", label)
-  if not child then
-    return { outcome = "refused", error = reason }
-  end
-  Hotload.waitFor(function()
-    return child.outcome ~= nil
-  end, math.huge)
-  return { outcome = child.outcome, result = child.result, error = child.error }
-end
-
 --- Abandons every active run. Menu callbacks never run during the tick, so no run is
 --- mid-resume here.
 local function stopAll()
@@ -556,7 +540,11 @@ function Hotload.load(name)
   local ok, value = pcall(chunk)
   if not ok then
     run.loaded[name] = nil
-    error("load " .. name .. ": " .. textOf(value), 2)
+    local message = textOf(value)
+    if message:find("attempt to yield across", 1, true) then
+      message = "a library's top level cannot wait (Hotload.wait, waitFor, callOnMain) -- move it into a function"
+    end
+    error("load " .. name .. ": " .. message, 2)
   end
   run.loaded[name] = { value = value }
   return value
@@ -734,14 +722,18 @@ local function buildMenu()
     missionCommands.removeItem(menuRoot)
   end
   menuRoot = missionCommands.addSubMenu(Hotload.menu or "Hotload")
-  local scriptsDir = Hotload.root .. "/user-scripts"
+  local f10Dir = Hotload.root .. "/user-f10"
   -- A wrong root would otherwise give a menu holding only Refresh and Stop, and no reason.
-  local _, _, err = listDir(scriptsDir)
-  if err then
-    fail("cannot read " .. scriptsDir .. " -- " .. err)
+  local _, _, err = listDir(f10Dir)
+  local old = lfs.attributes(Hotload.root .. "/user-scripts")
+  if err and old and old.mode == "directory" then
+    fail("user-scripts/ is now user-f10/ -- rename it")
+  elseif err then
+    fail("cannot read " .. f10Dir .. " -- " .. err)
   end
   -- Two rows of the root page are kept for Refresh and Stop, so they never move into "More...".
-  buildLevel(scriptsDir, "", menuRoot, MENU_ROWS - 2)
+  -- Labels start with f10/, so an entry never shares one with an inbox command.
+  buildLevel(f10Dir, "f10/", menuRoot, MENU_ROWS - 2)
   missionCommands.addCommand("Refresh menu", menuRoot, function()
     buildMenu()
     Hotload.say("menu refreshed")

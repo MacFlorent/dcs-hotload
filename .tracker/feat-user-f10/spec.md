@@ -1,6 +1,6 @@
 # One reader per folder
 
-Status: in-progress
+Status: done
 
 Independent of `feat-stop-one-run`; both are meant for `2.0.0`.
 
@@ -35,7 +35,8 @@ Two rough edges in `IDEAS.md` come from the same place:
 | `user-inbox/`, `user-outbox/` | the mailbox | unchanged |
 
 - **`user-scripts/` becomes `user-f10/`.**
-- **At startup**, if `user-scripts/` exists and `user-f10/` does not, hotload says so (`fail`):
+- **When the menu is built** (at startup, and on *Refresh menu*), if `user-f10/` cannot be read
+  and `user-scripts/` exists, hotload says so (`fail`) instead of `cannot read`:
   `user-scripts/ is now user-f10/ -- rename it`. The menu is still built, from `user-f10/`.
 - Nothing enforces what goes where: a long F10 file works. It is just reachable from nowhere else.
 
@@ -86,7 +87,7 @@ mailbox format, its status values and `bin/hotload.sh` do not change.
 | Remove `Hotload.run` | `Hotload.run(name, fn)`, a function child run | a step that may fail without failing its command is the driver's job, done with separate commands; a function child brings labels, a shared library cache and child stops for a need no one has had |
 | Rename to `user-f10/` | keep `user-scripts/` | the name says the folder's only reader |
 | Prefix F10 labels with `f10/` | reserve an `inbox` folder name in the menu | every label says its source, and no folder name is special |
-| Say so at startup when only `user-scripts/` exists | rename it automatically, or say nothing | the mission cannot rename files (`os` is sanitized); silence would give an empty menu with no reason |
+| Say so when the menu is built and only `user-scripts/` exists | rename it automatically, or say nothing | the mission cannot rename files (`os` is sanitized); silence would give an empty menu with no reason |
 
 ## Tests
 

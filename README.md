@@ -32,11 +32,12 @@ Scripts can wait in sim time. No external executable.
 | Folder | Owner | Loaded |
 |---|---|---|
 | `user-lib/` | the mission | through `Hotload.load`, re-read once per run |
-| `user-scripts/` | the mission | on click, re-read every time; one file = one menu command |
+| `user-f10/` | the mission | on click, re-read every time; one file = one F10 command |
 | `user-inbox/`, `user-outbox/` | whoever drives the mailbox | optional — see *Mailbox* |
 
-In `user-scripts/`, subfolders become submenus; names starting with `_` are skipped; a leading
-`NN-` orders entries and is dropped from the label (`10-clear-arena.lua` → `clear-arena`).
+In `user-f10/`, subfolders become submenus; names starting with `_` are skipped; a leading
+`NN-` orders entries and is dropped from the menu text (`10-clear-arena.lua` → `clear-arena`). In
+dcs.log, its run is labelled by source and path, prefix included: `f10/10-clear-arena`.
 After adding, renaming or deleting files, use **Refresh menu**.
 
 F10 shows at most 10 entries per level and does not page, so a level with more shows the first
@@ -46,6 +47,10 @@ F10 shows at most 10 entries per level and does not page, so a level with more s
 
 A script is a plain Lua file run as a coroutine. What it returns is shown when it finishes: on
 screen (cut at 200 characters) and in full in dcs.log.
+
+**Code goes in `user-lib/`; an F10 entry or an inbox command is a thin call into it**, such as
+`return Hotload.load("arena").reset()`. A library function takes arguments, a file does not, and
+the same call works from F10 and from the mailbox.
 
 ```lua
 local arena = Hotload.load("arena")         -- user-lib/arena.lua, fresh this run
@@ -60,21 +65,17 @@ return { live = live }
 | `Hotload.wait(s)` | ✓ | waits `s` sim-seconds |
 | `Hotload.waitFor(fn, timeout)` | ✓ | waits until `fn()` is truthy → `true`, or `timeout` s → `false` |
 | `Hotload.load(name)` | | runs `user-lib/<name>.lua` (once per run) and returns its result |
-| `Hotload.run(name)` | ✓ | runs `user-scripts/<name>.lua` (`NN-` prefix included) as its own run, waits, returns `{outcome, result, error}` |
 | `Hotload.callOnMain(fn)` | ✓ | runs `fn` on the mission's main Lua state, returns like `pcall` |
 | `Hotload.log(fmt, ...)` | | a `HOTLOAD:` line in dcs.log, stamped with the run's time and label |
 | `Hotload.say(text, s)` | | on screen, and logged |
 
-`wait`, `waitFor`, `load`, `run` and `callOnMain` work only in the script's own code, not in a
+`wait`, `waitFor`, `load` and `callOnMain` work only in the script's own code, not in a
 coroutine of your own or a DCS callback. The calls that pause cannot go under a `pcall`, a
 `table.sort` comparator or a library's top level either: Lua 5.1 cannot pause across those. Under
 a `pcall` the call fails, and the script carries on unless it checks what the `pcall` returned.
 
 The function given to `waitFor` is called every 0.1 s until it returns a truthy value or the
 timeout passes: keep it cheap, and don't wait or log in it.
-
-A missing, broken or busy entry does not make `Hotload.run` raise: `outcome` is `done`, `fail`,
-`stopped` or `refused` (no such file, does not compile, or already running).
 
 A timer armed from a script is called back on the script's coroutine, and crashes DCS once the
 script has ended and its coroutine has been collected, which can be seconds or minutes later.
@@ -124,9 +125,7 @@ return {
   clean both folders yourself.
 - After a mission restart, a command whose outbox still says `started` is not run again.
 
-To run a menu entry from the mailbox, send `return Hotload.run("10-clear-arena")`: the result is
-then `{ outcome = "done", result = <what the entry returned> }`. The outbox `status` says how the
-command went, not the entry: read `outcome`.
+To do what an F10 entry does from the mailbox, send what the entry contains.
 
 ### Mailbox client
 

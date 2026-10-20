@@ -1,4 +1,4 @@
--- Expected: "done selftest/call-on-main (0.2s) -> true", then, from a timer armed through
+-- Expected: "done f10/selftest/call-on-main (0.2s) -> true", then, from a timer armed through
 -- Hotload.callOnMain, "call-on-main: beat 1 of 10" to "beat 10 of 10", one a second, with
 -- "call-on-main: collected" after beat 3. By then this run has ended, and the collection frees its
 -- coroutine: a timer armed from the run itself would crash DCS at its next beat. DCS keeps running.

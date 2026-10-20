@@ -191,7 +191,7 @@ function Stub.write(path, text)
 end
 
 --- A clean folder under the system temp directory, filled from `files`:
---- { ["user-scripts/a.lua"] = "return 1", ["user-inbox/"] = true }   (true: an empty folder)
+--- { ["user-f10/a.lua"] = "return 1", ["user-inbox/"] = true }   (true: an empty folder)
 function Stub.tempRoot(name, files)
   local base = (os.getenv("TEMP") or os.getenv("TMPDIR") or "/tmp"):gsub("\\", "/")
   local root = base .. "/hotload-test-" .. name

@@ -256,8 +256,9 @@ class Deploy(Scratch):
         self.assertEqual(setup.main(["deploy", "--mission", str(self.dir)]), setup.OK)
         for path in setup.shipped():
             self.assertTrue((self.deployed() / path).exists(), path)
-        for folder in ("user-lib", "user-scripts", "user-inbox", "user-outbox"):
+        for folder in ("user-lib", "user-f10", "user-inbox", "user-outbox"):
             self.assertTrue((self.deployed() / folder).is_dir(), folder)
+        self.assertFalse((self.deployed() / "user-scripts").exists())
         self.assertFalse((self.deployed() / "skills").exists())
         self.assertEqual(setup.lua_version(self.deployed() / "dcs-hotload.lua"), setup.plugin_version())
 
@@ -281,6 +282,19 @@ class Deploy(Scratch):
         self.assertEqual(setup.lua_version(self.deployed() / "dcs-hotload.lua"), setup.plugin_version())
         self.assertEqual((self.deployed() / "user-lib" / "mine.lua").read_text(encoding="utf-8"), "return 1")
         self.assertEqual((self.deployed() / "user-outbox" / "x.lua").read_text(encoding="utf-8"), "return 2")
+
+    def test_update_over_user_scripts_says_to_rename_it_and_adds_no_empty_user_f10(self):
+        setup.main(["deploy", "--mission", str(self.dir)])
+        self.set_version("1.3.0")
+        (self.deployed() / "user-f10").rmdir()
+        (self.deployed() / "user-scripts").mkdir()
+        (self.deployed() / "user-scripts" / "a.lua").write_text("return 1", encoding="utf-8")
+
+        with mock.patch("builtins.print") as printed:
+            self.assertEqual(setup.main(["deploy", "--mission", str(self.dir), "--update"]), setup.OK)
+        self.assertFalse((self.deployed() / "user-f10").exists())
+        self.assertTrue((self.deployed() / "user-scripts" / "a.lua").exists())
+        self.assertIn("rename user-scripts/ to user-f10/", " ".join(str(c) for c in printed.call_args_list))
 
     def test_newer_is_left_alone(self):
         setup.main(["deploy", "--mission", str(self.dir)])
