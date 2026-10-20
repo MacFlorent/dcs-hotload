@@ -497,6 +497,11 @@ function Hotload.callOnMain(fn)
   return coroutine.yield({ hotload = true, kind = "main", fn = fn })
 end
 
+--- Abandons one active run: the only way a run is stopped. The run must not be mid-resume.
+local function stopRun(run)
+  finishRun(run, "stopped")
+end
+
 --- Abandons every active run. Menu callbacks never run during the tick, so no run is
 --- mid-resume here.
 local function stopAll()
@@ -509,8 +514,26 @@ local function stopAll()
     return
   end
   for _, run in ipairs(active) do
-    finishRun(run, "stopped")
+    stopRun(run)
   end
+end
+
+--- Abandons the active run labelled `label`: true, or false when no run has that label. It does
+--- not pause, so it works anywhere. One run executes at a time, so the only run that can be
+--- mid-resume is the caller, `current`, even from its callOnMain function or its predicate: that
+--- one is refused, since finishing it now would finish it again when its resume returns.
+function Hotload.stop(label)
+  assert(type(label) == "string" and label ~= "", "Hotload.stop: label must be a non-empty string")
+  if current and current.label == label then
+    error("Hotload.stop: " .. label .. " cannot stop itself -- return instead", 2)
+  end
+  local run = runs[label]
+  if not run then
+    return false
+  end
+  logLine(string.format("stop %s (from %s)", label, current and current.label or "outside a run"))
+  stopRun(run)
+  return true
 end
 
 -- ── Libraries ───────────────────────────────────────────────────────────────────────────────
