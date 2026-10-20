@@ -13,7 +13,7 @@ Usage:
   sim:load(root)                -- a fresh hotload instance on that root
   sim:click("selftest/wait")
   sim:advance(6)
-  lu.assertEquals(sim:count("done selftest/wait"), 1)
+  lu.assertEquals(sim:count("done f10/selftest/wait"), 1)
 ]]
 
 require("lfs")
