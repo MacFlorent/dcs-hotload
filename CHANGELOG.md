@@ -11,6 +11,9 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
   over `user-scripts/` says to rename it.
 - **Breaking: `Hotload.run` is removed.** Send what the entry contains, or call into `user-lib/`;
   a step that may fail without failing the rest is a separate mailbox command.
+- **A library that waits at its top level says so**: `load <name>: a library's top level cannot
+  wait ... -- move it into a function`, in place of Lua's "attempt to yield across
+  metamethod/C-call boundary".
 
 ## [1.3.0] — 2026-10-15
 

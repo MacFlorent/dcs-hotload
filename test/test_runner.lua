@@ -176,6 +176,18 @@ function TestRunnerEdges:testAnInternalErrorStillEndsTheRun()
   lu.assertEquals(sim:count("f10/odd is still running"), 0)
 end
 
+function TestRunnerEdges:testALibraryThatWaitsAtItsTopLevelFailsWithTheReason()
+  local root = Stub.tempRoot("libwait", {
+    ["user-lib/waits.lua"] = "Hotload.wait(1) return {}",
+    ["user-f10/uses.lua"] = 'return Hotload.load("waits")',
+  })
+  sim:load(root)
+  clickAndRun("uses", 2)
+  local line = sim:line("FAIL f10/uses")
+  lu.assertStrContains(line, "load waits: a library's top level cannot wait")
+  lu.assertStrContains(line, "move it into a function")
+end
+
 function TestRunnerEdges:testAWeirdErrorObjectStillFailsTheRun()
   local root = Stub.tempRoot("weird", { ["user-f10/weird.lua"] =
     "error(setmetatable({}, { __tostring = function() return nil end }))" })

@@ -540,7 +540,11 @@ function Hotload.load(name)
   local ok, value = pcall(chunk)
   if not ok then
     run.loaded[name] = nil
-    error("load " .. name .. ": " .. textOf(value), 2)
+    local message = textOf(value)
+    if message:find("attempt to yield across", 1, true) then
+      message = "a library's top level cannot wait (Hotload.wait, waitFor, callOnMain) -- move it into a function"
+    end
+    error("load " .. name .. ": " .. message, 2)
   end
   run.loaded[name] = { value = value }
   return value
