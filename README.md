@@ -68,6 +68,7 @@ return { live = live }
 | `Hotload.callOnMain(fn)` | ✓ | runs `fn` on the mission's main Lua state, returns like `pcall` |
 | `Hotload.log(fmt, ...)` | | a `HOTLOAD:` line in dcs.log, stamped with the run's time and label |
 | `Hotload.say(text, s)` | | on screen, and logged |
+| `Hotload.stop(label)` | | stops the active run `label` (as dcs.log and the outbox name it) → `true`, or `false` if none is running; a run cannot stop itself |
 
 `wait`, `waitFor`, `load` and `callOnMain` work only in the script's own code, not in a
 coroutine of your own or a DCS callback. The calls that pause cannot go under a `pcall`, a
@@ -85,7 +86,7 @@ through `Hotload.callOnMain`. `fn` runs on the next tick; it cannot pause, and o
 `false, message` and is logged with its traceback.
 
 Different scripts can run at once, taking turns at each pause; the same script cannot run twice
-at once. **Stop all runs** ends every running script. A script that never pauses
+at once. **Stop all runs** ends every running script; `Hotload.stop` ends one. A script that never pauses
 (`while true do end`) freezes the sim — nothing can stop it.
 
 ### Libraries in `user-lib/`

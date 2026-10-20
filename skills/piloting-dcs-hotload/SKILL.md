@@ -49,7 +49,8 @@ Prints the outbox result and cleans the mailbox. Exit 0 done, 1 fail/refused/sto
 
 - A command that may take more than 2 minutes needs a longer timeout on the Bash call.
 - On timeout the command stays in the inbox and still runs; its result lands in
-  `user-outbox/<name>.lua` later. Read it or delete both files yourself.
+  `user-outbox/<name>.lua` later. Read it or delete both files yourself. To end it first, send
+  `return Hotload.stop("inbox/<name>")`: its outbox then reads `stopped`.
 - `hotload.sh log [PATTERN]` — HOTLOAD lines since the last `ready`, from
   `Saved Games/DCS/Logs/dcs.log` (`--log FILE` for another). `dcs.log` times are **UTC**.
 - The mission must be running and unpaused: sim time drives every wait.
@@ -73,8 +74,9 @@ These come from how hotload runs a script; they hold whatever the script does.
   return the numbers.
 - **Where the `Hotload.*` calls work, and where the ones that pause cannot go**: the README's
   *Writing a script*.
-- **_Stop all runs_ abandons a command mid-wait without running its cleanup.** A command that leaves
-  objects in the world needs a cleanup that does not depend on reaching its end.
+- **_Stop all runs_ and `Hotload.stop` abandon a command mid-wait without running its cleanup.** A
+  command that leaves objects in the world needs a cleanup that does not depend on reaching its
+  end.
 - **Anything that may arm a timer or register an event handler, directly or through a library,
   goes through `Hotload.callOnMain`**: the README's *Writing a script* says why and how.
 
