@@ -49,7 +49,7 @@ cmd_run() {
     sleep 0.5; waited=$((waited + 1))
   done
   if [ -z "$status" ] || [ "$status" = "started" ]; then
-    echo "hotload.sh: no final result after ${timeout}s (status: ${status:-not picked up}); files kept: $inbox; to stop it: hotload.sh run -e 'return Hotload.stop(\"inbox/$name\")'" >&2
+    echo "hotload.sh: no final result after ${timeout}s (status: ${status:-not picked up}); files kept: $inbox; to stop it: hotload.sh run --root '$root' -e 'return Hotload.stop(\"inbox/$name\")'" >&2
     exit 2
   fi
   cat "$outbox"
