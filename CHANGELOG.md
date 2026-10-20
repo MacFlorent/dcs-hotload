@@ -5,6 +5,8 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-10-20
+
 - **Breaking: `user-scripts/` is now `user-f10/`**, read only by the F10 menu: rename the folder.
   Hotload says so when it finds only the old one. F10 runs are labelled `f10/<path>` in dcs.log,
   so an entry never shares a label with an inbox command. Setup deploys `user-f10/`, and an update
