@@ -14,6 +14,9 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
 - **A library that waits at its top level says so**: `load <name>: a library's top level cannot
   wait ... -- move it into a function`, in place of Lua's "attempt to yield across
   metamethod/C-call boundary".
+- **`Hotload.stop(label)`** stops one run by its label, from the mailbox or anywhere: a driver can
+  end a command that waits forever without *Stop all runs*. `hotload.sh`'s timeout message says
+  how.
 
 ## [1.3.0] — 2026-10-15
 

@@ -7,7 +7,8 @@
 #
 # run: writes user-inbox/NAME.lua atomically, waits for user-outbox/NAME.lua to leave "started",
 #      prints it, deletes both files (unless --keep). Exit 0 done, 1 fail/refused/stopped,
-#      2 timeout (files left so a later call or a look can pick the result up), 3 usage/setup.
+#      2 timeout (files left so a later call or a look can pick the result up; the message says
+#      how to stop the command), 3 usage/setup.
 # Root defaults to $HOTLOAD_ROOT, then ./dcs-hotload. Timeout defaults to 600 s.
 set -u
 
@@ -48,7 +49,7 @@ cmd_run() {
     sleep 0.5; waited=$((waited + 1))
   done
   if [ -z "$status" ] || [ "$status" = "started" ]; then
-    echo "hotload.sh: no final result after ${timeout}s (status: ${status:-not picked up}); files kept: $inbox" >&2
+    echo "hotload.sh: no final result after ${timeout}s (status: ${status:-not picked up}); files kept: $inbox; to stop it: hotload.sh run --root '$root' -e 'return Hotload.stop(\"inbox/$name\")'" >&2
     exit 2
   fi
   cat "$outbox"

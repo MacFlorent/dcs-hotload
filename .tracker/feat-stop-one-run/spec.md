@@ -1,9 +1,9 @@
 # Stop one run
 
-Status: in-progress
+Status: done
 
-Meant for `2.0.0` with `feat-user-f10`; the labels below are the ones it gives. Written from the Skynet-IADS in-sim
-test suite, its first user; nothing below is specific to Skynet.
+Meant for `2.0.0` with `feat-user-f10`; the labels below are the ones it gives. Written from the
+Skynet-IADS in-sim test suite, its first user; nothing below is specific to Skynet.
 
 ## The problem
 
