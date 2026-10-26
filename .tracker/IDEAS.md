@@ -3,29 +3,42 @@
 Prospective work. An idea taken up leaves this file in the commit that opens its spec; a dropped
 idea stays, with its reason.
 
-## A test tool that drives hotload
+## A tool that drives hotload
 
 A separate tool, run on the developer's machine, that uses the mailbox as its only interface.
-Measure in DCS, judge outside: a scenario is an inbox command returning measurements; verdicts are
-luaunit tests in plain Lua 5.1 that send their scenario, wait, save the result, and assert. Serial,
-one scenario at a time with a timeout each (concurrent heavy engagements have frozen DCS);
-results saved so assertions can be re-run offline; scenarios clean up their own world; in-sim
-helpers ship as a `user-lib/` package. Open: name and location, result archiving without a wall
-clock, a preflight check, how existing in-sim suites move to it, whether it ships a skill.
+This is extracted from Skynet-IADS's in-sim test engine, which was built to leave that
+repository. `bin/hotload.sh run` is ported to Python with it, so the tooling is in one language.
 
-Lessons from a campaign of about 300 runs driven through the mailbox (SkynetMunitionTests, October
-2026): each run appends its own result row, so a crash or a restart costs at most one run and the
-campaign resumes by skipping what is recorded; every command gets a unique mailbox name, since a
-reused name lets a stale waiter pick up a later result; a run checks its own preconditions (the
-site loaded, its options reset) before a "no" is trusted; a framework is driven through
-`Hotload.callOnMain`; on Windows, a background driver that Claude Code stops keeps running and is
-killed by process id, and a bash driver is never edited while it runs, since bash reads it as it
-goes.
+Lessons from the SkynetMunitionTests campaign (about 300 runs) that the tool must keep: each run
+appends its own result, so a crash costs one run and the series resumes; every command gets a unique
+mailbox name, since a reused one lets a stale waiter pick up a later result; a run checks its own
+preconditions before a "no" is trusted; a framework is driven through `Hotload.callOnMain`; on
+Windows, a background driver that Claude Code stops keeps running and is killed by process id; a bash
+driver is never edited while it runs, since bash reads it as it goes.
 
-## An MCP front end
+## The mission tells a driver its state
 
-Deferred: the mailbox driven with plain file tools and `bin/hotload.sh` has been enough. Worth it
-only if a tool-call interface brings something the mailbox cannot.
+A driver waiting on a long command has to tell a paused DCS from a dead one, and a mission that
+restarted from one still running. Silence tells nothing: the mailbox polls on a DCS timer, so a
+paused mission does not answer either. What tells them apart is the mission's sim clock, which
+freezes with a pause and restarts from 0 with the mission. Read with the sortie name, it also
+lets a driver count a command's timeout in sim time — so a paused DCS never times a run out — and
+check which mission is open before sending anything. `bin/hotload.sh run` has none of this: it
+waits in real time and reports a pause as a timeout.
+
+Skynet-IADS's in-sim suite gets it by sending its own probe command through the mailbox, every few
+seconds while it waits, answered by a library of its own in `user-lib/`
+(`{ mission = <sortie>, time = timer.getTime() }`): a driver core moved here as it is would still
+need that library from the mission. Hotload could answer it itself, two ways:
+
+- **`Hotload.status()`**, built in: the probe any driver sends. The smallest change; it still costs a
+  command round trip per look, and probe files to clear.
+- **A heartbeat file**, rewritten by hotload on its own tick: sortie name, sim time, the runs active.
+  A driver reads a file, with no command and no round trip, and it answers even while the mailbox is
+  busy. `hotload.sh run` could then wait in sim time and say "paused" or "the mission restarted".
+
+The heartbeat is the cheaper and sturdier. It belongs with the tool above: the Skynet driver
+core is the seed of that tool, and moving it here first needs this.
 
 ## Check the skill against a live mission
 
@@ -53,3 +66,10 @@ that `./bin/hotload.sh` refuses to run. Nothing breaks: every document runs it a
 - `duration` in outbox files keeps float noise (`0.10000000000000142`).
 - A predicate failure carries no traceback; argument errors in `Hotload.*` point inside the core
   rather than at the caller's line.
+
+## Dropped
+
+### An MCP front end
+
+The mailbox driven with plain file tools and `bin/hotload.sh` has been enough. Worth it
+only if a tool-call interface brings something the mailbox cannot.
