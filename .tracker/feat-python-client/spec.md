@@ -1,6 +1,6 @@
 # A Python client that drives hotload
 
-Status: in-progress
+Status: done
 
 Meant for `3.0.0`. Taken from Skynet-IADS's in-sim test engine (`test/insim/engine/`: `mailbox.py`,
 `luadata.py`, `driver.py`), written to leave that repository, and moved here as hotload's own
