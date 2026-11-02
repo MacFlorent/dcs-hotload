@@ -26,7 +26,7 @@ if HotloadCore then
 end
 
 Hotload = Hotload or {}
-Hotload.version = "2.0.0"   -- semantic versioning; CHANGELOG.md says what each version changed
+Hotload.version = "3.0.0"   -- semantic versioning; CHANGELOG.md says what each version changed
 
 local TAG = "HOTLOAD"
 local TICK = 0.1
