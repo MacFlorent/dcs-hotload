@@ -27,8 +27,8 @@ done
 rm -rf dist
 mkdir -p dist/dcs-hotload
 cp -R "${shipped[@]}" dist/dcs-hotload/
-# Git for Windows records every file as non-executable; the package does not depend on it.
-chmod +x dist/dcs-hotload/bin/hotload.sh
+# Bytecode a local run of the client may have left; a mission's Python writes its own.
+find dist/dcs-hotload -name __pycache__ -type d -prune -exec rm -rf {} +
 echo "package: staged dist/dcs-hotload/"
 
 # Release notes: the lines between "## [VERSION]" and the next "## [" heading. index() rather

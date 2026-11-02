@@ -8,13 +8,6 @@ idea stays, with its reason.
 The skill was tested against a stand-in DCS. Run its scenarios in a real mission, from a fresh
 install following `skills/README.md`.
 
-## Record the executable bit of `bin/hotload.sh`
-
-Git for Windows commits every file as `100644`, so a Linux or macOS clone gets a `hotload.sh`
-that `./bin/hotload.sh` refuses to run. Nothing breaks: every document runs it as
-`bash bin/hotload.sh`. Fix once with `git add --chmod=+x bin/hotload.sh`; check with
-`git ls-files -s bin/hotload.sh` (`100755`).
-
 ## Known rough edges
 
 - A command name whose outbox could not be written stays blocked until the mission restarts, and
@@ -34,5 +27,9 @@ that `./bin/hotload.sh` refuses to run. Nothing breaks: every document runs it a
 
 ### An MCP front end
 
-The mailbox driven with plain file tools and `bin/hotload.sh` has been enough. Worth it
+The mailbox driven with plain file tools and the mailbox client has been enough. Worth it
 only if a tool-call interface brings something the mailbox cannot.
+
+### Record the executable bit of `bin/hotload.sh`
+
+`bin/hotload.sh` is gone: `bin/hotload.py` is run as `python hotload.py`, which needs no bit.

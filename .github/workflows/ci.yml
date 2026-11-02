@@ -52,10 +52,10 @@ jobs:
           EOF
 
       - name: ShellCheck
-        run: shellcheck bin/hotload.sh .github/scripts/package.sh .github/scripts/lint.sh
+        run: shellcheck .github/scripts/package.sh .github/scripts/lint.sh
 
       # Builds the zip a release would publish, so a broken package shows before any tag.
       - name: Package
         run: |
           bash .github/scripts/package.sh
-          zipinfo dist/dcs-hotload-*.zip | grep -E '^-rwxr-xr-x .* dcs-hotload/bin/hotload\.sh$'
+          zipinfo dist/dcs-hotload-*.zip | grep -E ' dcs-hotload/bin/hotload\.py$'
