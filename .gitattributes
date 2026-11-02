@@ -1,4 +1,4 @@
-# LF everywhere, whatever the clone's core.autocrlf: Bash refuses a CRLF hotload.sh, and the
+# LF everywhere, whatever the clone's core.autocrlf: Bash refuses a CRLF script, and the
 # tests compare text that hotload writes with LF.
 * text=auto eol=lf
 

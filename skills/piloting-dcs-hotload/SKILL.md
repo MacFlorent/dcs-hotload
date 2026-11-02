@@ -1,6 +1,6 @@
 ---
 name: piloting-dcs-hotload
-description: Use when setting up dcs-hotload in a DCS mission folder (deploying or updating the tool, checking that the .miz loads it), or when running Lua in a live DCS mission through it (user-inbox / user-outbox, bin/hotload.sh).
+description: Use when setting up dcs-hotload in a DCS mission folder (deploying or updating the tool, checking that the .miz loads it), or when running Lua in a live DCS mission through it (user-inbox / user-outbox, bin/hotload.py).
 ---
 
 # Piloting DCS through dcs-hotload
@@ -35,36 +35,39 @@ follow `setup.md`, which also says how to check a running mission.
 
 ## Send a command: one call
 
-`hotload.sh` is hotload's mailbox client, shipped in the mission's `dcs-hotload/bin/`. From the
-mission folder:
+`hotload.py` is hotload's mailbox client (Python 3.8+), shipped in the mission's
+`dcs-hotload/bin/`. From the mission folder:
 
 ```bash
-bash dcs-hotload/bin/hotload.sh run -e 'return timer.getTime()'
-bash dcs-hotload/bin/hotload.sh run --name lane-1 --timeout 1800 my-command.lua
+python dcs-hotload/bin/hotload.py run -e 'return timer.getTime()'
+python dcs-hotload/bin/hotload.py run --name lane-1 --timeout 1800 my-command.lua
 ```
 
 Prints the outbox result and cleans the mailbox. Exit 0 done, 1 fail/refused/stopped, 2 timeout,
-3 usage: the command's own outcome. A `fail` carries `error` and `traceback`. Root: `--root`, else
-`$HOTLOAD_ROOT`, else `./dcs-hotload` (right when run from the mission folder).
+3 usage, 4 lost, 5 silent. A `fail` carries `error` and `traceback`. Root: `--root`, else
+`$HOTLOAD_ROOT`, else the `dcs-hotload/` folder the client is in.
 
+- `--timeout` counts **sim** seconds (default 600), so a pause never times a command out. Past it,
+  the client stops the command with `Hotload.stop`: exit 2.
+- Exit 4: the mission restarted under the command, which will never finish.
+- Exit 5: no heartbeat for `--silence` real seconds (default 60): the mission is paused, not started
+  (no slot taken yet), or DCS is down. The files are kept and the command still runs once the
+  mission does: read `user-outbox/<name>.lua` later, or send
+  `return Hotload.stop("inbox/<name>")`.
 - A command that may take more than 2 minutes needs a longer timeout on the Bash call.
-- On timeout the command stays in the inbox and still runs; its result lands in
-  `user-outbox/<name>.lua` later. Read it or delete both files yourself. To end it first, send
-  `return Hotload.stop("inbox/<name>")`: its outbox then reads `stopped`.
-- `hotload.sh log [PATTERN]` — HOTLOAD lines since the last `ready`, from
+- `hotload.py status` — which mission is open, its sim time and the active runs, from the
+  heartbeat (the README's *Heartbeat*); exit 0 while it advances, 1 when paused, not started or
+  down.
+- `hotload.py log [PATTERN]` — HOTLOAD lines since the last `ready`, from
   `Saved Games/DCS/Logs/dcs.log` (`--log FILE` for another). `dcs.log` times are **UTC**.
-- The mission must be running and unpaused: sim time drives every wait.
-- `user-outbox/_heartbeat.lua` tells, without a command, which mission is open, its sim time and
-  the active runs. It stays still while the mission is paused or not running: the README's
-  *Heartbeat*.
 
 ## Which code is live?
 
 | You changed | It is live after | Verify |
 |---|---|---|
 | `user-lib/`, `user-f10/`, an inbox command | nothing (re-read every run) | — |
-| `dcs-hotload.lua` | mission Restart (the boot line `dofile`s it from disk) | `hotload.sh log ready` |
-| a file the `.miz` embeds | the `.miz` rebuilt and re-opened | `hotload.sh check <name-in-miz> <file-on-disk>` |
+| `dcs-hotload.lua` | mission Restart (the boot line `dofile`s it from disk) | `hotload.py log ready` |
+| a file the `.miz` embeds | the `.miz` rebuilt and re-opened | `hotload.py check <name-in-miz> <file-on-disk>` |
 
 `check` compares with DCS's copy of the running mission, `%TEMP%/DCS/tempMission.miz`: a mission
 must be running on this machine.

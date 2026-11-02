@@ -1,15 +1,16 @@
 # Contributing
 
 dcs-hotload is one Lua file that runs other Lua inside a live DCS World mission, plus a small
-shell client. This file holds every rule for changing it; `CLAUDE.md` only points here.
+Python client. This file holds every rule for changing it; `CLAUDE.md` only points here.
 
 ## What you need
 
 - **Lua 5.1 with LuaFileSystem**, to run the tests. On Windows, *Lua for Windows* has both, at
   `C:\Program Files (x86)\Lua\5.1\lua.exe`. On Linux, `lua5.1` and
   `luarocks --lua-version=5.1 install luafilesystem`.
-- **Python 3**, for the plugin's setup script and its tests (standard library only).
-- **A Bash shell** (Git Bash on Windows), for `bin/hotload.sh` and the commands below, and `curl`,
+- **Python 3.8 or later**, for the mailbox client, the plugin's setup script and their tests
+  (standard library only).
+- **A Bash shell** (Git Bash on Windows), for the commands below, and `curl`,
   with which `.github/scripts/lint.sh` fetches luacheck.
 - **DCS World** with the `MissionScripting.lua` edit described in `README.md`, for checks only the
   simulator can answer.
@@ -19,11 +20,11 @@ shell client. This file holds every rule for changing it; `CLAUDE.md` only point
 | Path | What it is |
 |---|---|
 | `dcs-hotload.lua` | the tool: everything a mission loads |
-| `bin/hotload.sh` | the mailbox client |
+| `bin/hotload.py` | the mailbox client, and the module a Python driver imports |
 | `examples/` | self-test scripts, run in DCS and by the tests |
 | `.claude-plugin/`, `skills/` | the Claude Code plugin: its manifest and its skill — see *Writing guidance*; not in the release package |
 | `test/` | the offline suite: plain Lua 5.1 against a stub DCS |
-| `test/python/` | the tests of the plugin's setup script, `skills/piloting-dcs-hotload/scripts/hotload-setup.py` |
+| `test/python/` | the tests of the mailbox client and of the plugin's setup script, `skills/piloting-dcs-hotload/scripts/hotload-setup.py` |
 | `.github/scripts/shipped.txt` | what a mission gets: the release package, and what the setup script deploys |
 | `.tracker/` | work in progress and work done, and `IDEAS.md` — see *Tracking work* |
 | `.drafts/` | local working space, git-ignored |
@@ -38,7 +39,7 @@ What a change must pass before its pull request:
 
 ```
 lua5.1 test/run.lua            # test hotload, every suite; a name filters: ... test/run.lua mailbox
-python -m unittest discover -s test/python    # test the setup script
+python -m unittest discover -s test/python    # test the client and the setup script
 bash .github/scripts/lint.sh   # luacheck at its pinned version, as CI runs it
 ```
 
@@ -61,7 +62,7 @@ it:
 | | Where it runs | What belongs in it |
 |---|---|---|
 | `test/` | plain Lua 5.1 and CI, against `test/dcs-stub.lua` | the runner, waits, the guard, the mailbox, the menu, the serializer, startup. **New tests go here** |
-| `test/python/` | Python 3 and CI | the plugin's setup script: the `.miz` reader and writer, the boot trigger, deploying, unlocking |
+| `test/python/` | Python 3 and CI | the mailbox client, against a fake mission on real files and a fake clock: Lua data, waits, the journal, the command line. The plugin's setup script: the `.miz` reader and writer, the boot trigger, deploying, unlocking |
 | `examples/` self-tests | inside DCS, copied into a mission | what a stub cannot show: how DCS renders the menu, real sim timing, how DCS names a loaded chunk |
 
 To run the self-tests, copy `examples/user-f10/selftest/` into a mission's `user-f10/`

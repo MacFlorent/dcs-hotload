@@ -1,6 +1,6 @@
 # A Python client that drives hotload
 
-Status: in-progress
+Status: done
 
 Meant for `3.0.0`. Taken from Skynet-IADS's in-sim test engine (`test/insim/engine/`: `mailbox.py`,
 `luadata.py`, `driver.py`), written to leave that repository, and moved here as hotload's own
@@ -33,7 +33,7 @@ One file, standard library only, Python 3.8 or later. It is both:
 |---|---|
 | `parse(text)`, `dump(value)`, `LuaDataError` | read a `return <value>` chunk as hotload writes it (tables become `dict`, or `list` when the keys are exactly 1..n); write one back that Lua 5.1 can `dofile` |
 | `Mailbox(root)` | `send(name, code)` atomically (`.tmp`, then a rename); `outcome(name)`, the outbox as a dict or `None` while absent or half-written; `clear(name)`, the inbox then the outbox; `heartbeat()`, the heartbeat as a dict plus its modification time, or `None` |
-| `Driver(mailbox, journal=None, say=print)` | `wait(name, code, timeout, silence=None)` sends one command and waits for its `Outcome`; `run(key, prefix, code, timeout)` does the same under a journal |
+| `Driver(mailbox, journal=None, say=print)` | `call(name, code, timeout, silence=None, keep=False)` sends one command and waits for its `Outcome`; `run(key, prefix, code, timeout, silence=None)` does the same under a journal |
 | `Outcome` | `status`, `result`, `error`, `traceback`, `duration` |
 
 `Outcome.status` is hotload's `done`, `fail`, `stopped` or `refused`, or one of the client's:
