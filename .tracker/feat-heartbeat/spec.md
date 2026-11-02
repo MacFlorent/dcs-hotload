@@ -1,6 +1,6 @@
 # The mission tells a driver its state
 
-Status: in-progress
+Status: done
 
 Meant for `2.1.0`. Written from the Skynet-IADS in-sim test suite, whose driver core is to move
 here as hotload's own client; that move is a later piece of work and needs this first.
@@ -59,7 +59,7 @@ return {
   | It sees | It means |
   |---|---|
   | the file's modification time advancing | the mission is running and not paused |
-  | the file still | paused, or not running: DCS down, or back at the menu |
+  | the file still | paused, not started yet (`time = 0` until a slot is taken), or not running: DCS down, or back at the menu |
   | `time` lower than it last read, or another `mission` | the mission restarted, or another one is open |
   | its command absent from `runs`, with no final outbox | the run is gone: the mission restarted |
 

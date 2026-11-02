@@ -144,7 +144,8 @@ return {
 ```
 
 - Its modification time advancing means the mission is running. A file that stays still means
-  paused or not running: a paused mission runs no timer, so the heartbeat cannot tell those apart.
+  paused, not started yet (`time = 0` until a slot is taken), or not running: a mission runs no
+  timer then, so the heartbeat cannot tell those apart.
 - `time` going back, or another `mission`, means the mission restarted or another one is open. A
   command in neither `runs` nor a final outbox is gone: its mission restarted under it.
 - It is rewritten in place, so a read can catch it half-written: read it again.
