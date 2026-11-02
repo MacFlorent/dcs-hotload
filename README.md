@@ -139,7 +139,7 @@ return {
   ["mission"] = "my-mission",                 -- the sortie name; absent when the mission has none
   ["runs"] = { ["inbox/lane-1"] = 412.3 },    -- every active run -> its start, in sim time
   ["time"] = 431,                             -- timer.getTime()
-  ["version"] = "2.1.0",
+  ["version"] = "3.0.0",
 }
 ```
 
@@ -152,22 +152,36 @@ return {
 
 ### Mailbox client
 
-`bin/hotload.sh` drives the mailbox from a shell (Git Bash on Windows) in one call:
+`bin/hotload.py` drives the mailbox in one call. It needs Python 3.8 or later, and nothing
+else:
 
 ```bash
-bash bin/hotload.sh run --root <mission>/dcs-hotload -e 'return timer.getTime()'
-bash bin/hotload.sh log                      # HOTLOAD lines since the last ready (UTC)
-bash bin/hotload.sh check skynet-iads-compiled.lua src/scripts/skynet-iads-compiled.lua
+python dcs-hotload/bin/hotload.py run -e 'return timer.getTime()'
+python dcs-hotload/bin/hotload.py status     # the heartbeat, and whether it is advancing
+python dcs-hotload/bin/hotload.py log        # HOTLOAD lines since the last ready (UTC)
+python dcs-hotload/bin/hotload.py check skynet-iads-compiled.lua src/scripts/skynet-iads-compiled.lua
 ```
 
-`run` writes the command, waits for its result, prints it, cleans up, and exits 0 done,
-1 fail/refused/stopped, 2 timeout. `check` tells whether the running mission embeds a file as it
-is on disk. Every option and default is in the comment at the top of `bin/hotload.sh`.
+`run` writes the command, waits for its result in sim time, prints it and cleans up. It exits:
+
+- 0 done; 1 fail, refused or stopped;
+- 2 timeout: past `--timeout` sim seconds, it stopped the command;
+- 4 lost: the mission restarted under the command;
+- 5 silent: no heartbeat for `--silence` real seconds; the files are kept, and the command still
+  runs once the mission does.
+
+`check` tells whether the running mission embeds a file as it is on disk. The root is `--root`,
+else `$HOTLOAD_ROOT`, else the `dcs-hotload/` folder the client is in. Every option and default is
+at the top of `bin/hotload.py`.
+
+A driver written in Python imports it, with `bin/` on `sys.path`. `Driver.call` sends a command
+and waits for it as `run` does. `Driver.run` does the same under a journal, so a series of
+commands resumes where it stopped after a crash. Their docstrings are the reference.
 
 ## Claude Code plugin (optional)
 
 The repository is also a Claude Code plugin, which teaches an agent to drive the mailbox with
-`bin/hotload.sh` and which code is live after what. Hotload does not need it, and it is not part
+`bin/hotload.py` and which code is live after what. Hotload does not need it, and it is not part
 of the release package: install it in Claude Code from the `dcs-agent-skills` marketplace, which
 publishes it with the other DCS plugins, with `/plugin marketplace add MacFlorent/dcs-agent-skills`,
 then `/plugin install dcs-hotload@dcs-agent-skills`.

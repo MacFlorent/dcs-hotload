@@ -9,6 +9,12 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
   sortie name, the sim time, the version and the active runs, rewritten every second. A driver can
   tell a restarted mission from the same one and count its timeouts in sim time, without a probe
   command.
+- **Breaking: `bin/hotload.sh` is replaced by `bin/hotload.py`**, which needs Python 3.8 or later:
+  `python dcs-hotload/bin/hotload.py run|log|check` as before, from any folder. `run` waits in
+  sim time, so a paused mission no longer times a command out, and a command past its timeout
+  is stopped rather than left running. New exits: 4 when the mission restarted under the command,
+  5 when the heartbeat stays silent for `--silence` seconds. `status` prints the heartbeat. A
+  Python driver imports the client for its Lua data reader, waits and journal.
 
 ## [2.0.0] — 2026-10-20
 

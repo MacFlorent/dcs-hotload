@@ -62,12 +62,11 @@ launch, not the patched file.
 Needs the mission running. From the mission folder:
 
 ```bash
-bash dcs-hotload/bin/hotload.sh log ready              # ready, its version, mailbox on
-bash dcs-hotload/bin/hotload.sh run -e 'return "pong"'  # done, with "pong" as result
+python dcs-hotload/bin/hotload.py log ready              # ready, its version, mailbox on
+python dcs-hotload/bin/hotload.py run -e 'return "pong"'  # done, with "pong" as result
 ```
 
-These run in Bash: Git Bash on Windows. When the user runs them, tell them to use Git Bash
-(*Open Git Bash here* in the mission folder): `bash` is usually not on the `PATH` of PowerShell or
-cmd.
+The quoting is Bash's, which PowerShell also takes; cmd does not take single quotes. On Windows,
+`py` stands in for `python` when only the launcher is on the `PATH`.
 
 When DCS is not running, say that this step is still to do.

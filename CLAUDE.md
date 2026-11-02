@@ -1,7 +1,7 @@
 # dcs-hotload — Claude Code instructions
 
 > One Lua 5.1 file (`dcs-hotload.lua`) that runs Lua inside a live DCS World mission from the F10
-> menu or a file mailbox, plus a shell client (`bin/hotload.sh`). Missions copy it; nothing is
+> menu or a file mailbox, plus a Python client (`bin/hotload.py`). Missions copy it; nothing is
 > built.
 
 **`CONTRIBUTING.md` is the guide, and its steps for a change are mandatory.** Read them before
@@ -24,7 +24,7 @@ loaded.
 
 ```
 lua5.1 test/run.lua                           # test hotload, offline; a name filters
-python -m unittest discover -s test/python    # test the plugin's setup script
+python -m unittest discover -s test/python    # test the client and the plugin's setup script
 bash .github/scripts/lint.sh                  # luacheck at its pinned version, as CI runs it
 ```
 
@@ -41,7 +41,7 @@ not `lua5.1`; at its default location: `"/c/Program Files (x86)/Lua/5.1/lua.exe"
 
 | About to… | Read |
 |---|---|
-| change `dcs-hotload.lua` or `bin/hotload.sh` | `CONTRIBUTING.md` — test first, changelog |
+| change `dcs-hotload.lua` or `bin/hotload.py` | `CONTRIBUTING.md` — test first, changelog |
 | add or change a test | `CONTRIBUTING.md`; `test/dcs-stub.lua` |
 | open a pull request, or open, update or archive a piece of work | `CONTRIBUTING.md` |
 | edit a guidance file | `CONTRIBUTING.md` — how guidance is written |
