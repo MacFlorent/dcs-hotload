@@ -4,6 +4,7 @@ A minimal DCS for hotload's tests.
   * a sim clock: timer.getTime and timer.scheduleFunction, advanced by sim:advance(seconds);
   * sim.armed: every timer.scheduleFunction call, and whether it came from a coroutine;
   * env and trigger that record what they are given (sim.logs, sim.screen);
+  * env.mission's sortie name, read from sim.dict;
   * missionCommands that builds a tree the tests can walk and click (sim:click("a/b"));
   * the real lfs and io, so hotload reads real folders made by Stub.tempRoot.
 
@@ -27,11 +28,14 @@ Stub.REPO = Stub.TEST_DIR .. "/.."
 --- A new sim, and the DCS globals hotload uses, pointing at it.
 function Stub.new()
   local sim = setmetatable({ now = 0, scheduled = {}, armed = {}, logs = {}, screen = {},
-    roots = {} }, Stub)
+    roots = {}, dict = { DictKey_sortie_1 = "stub-mission" } }, Stub)
   env = {
     info = function(text) sim.logs[#sim.logs + 1] = text end,
     warning = function(text) sim.logs[#sim.logs + 1] = text end,
     error = function(text) sim.logs[#sim.logs + 1] = text end,
+    -- The sortie name is a dictionary key, as in a .miz; a test sets sim.dict before sim:load.
+    mission = { sortie = "DictKey_sortie_1" },
+    getValueDictByKey = function(key) return sim.dict[key] end,
   }
   trigger = { action = { outText = function(text) sim.screen[#sim.screen + 1] = text end } }
   timer = {

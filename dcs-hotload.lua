@@ -619,6 +619,42 @@ local function outcomeRecord(run)
   }
 end
 
+-- The heartbeat: what a driver needs to tell the same mission from a restarted one, and to count
+-- in sim time. Rewritten at every poll; a paused mission runs no timer, so it goes still then.
+local HEARTBEAT = "_heartbeat.lua"   -- the inbox ignores "_" names: never a command's outbox
+local sortie                         -- the Mission Editor's sortie name, or nil
+local heartbeatFailing = false       -- a failed write is logged once, until one succeeds
+
+local function readSortie()
+  local ok, name = pcall(function()
+    return env.getValueDictByKey(env.mission.sortie)
+  end)
+  if ok and type(name) == "string" and name ~= "" then
+    return name
+  end
+  return nil
+end
+
+local function writeHeartbeat()
+  local active = {}
+  for label, run in pairs(runs) do
+    active[label] = run.startedAt
+  end
+  local beat = { mission = sortie, time = timer.getTime(), version = Hotload.version, runs = active }
+  local path = outboxDir .. "/" .. HEARTBEAT
+  local handle, err = io.open(path, "w")
+  if not handle then
+    if not heartbeatFailing then
+      logLine("cannot write the heartbeat " .. path .. ": " .. tostring(err))
+    end
+    heartbeatFailing = true
+    return
+  end
+  handle:write("-- dcs-hotload heartbeat\nreturn " .. serialize(beat) .. "\n")
+  handle:close()
+  heartbeatFailing = false
+end
+
 local function pickUp(name, label)
   local startedAt = timer.getTime()
   -- The token first: without it, a command could run again on the next poll.
@@ -662,6 +698,10 @@ local function poll(_, now)
   if not ok then
     logLine("mailbox poll error: " .. tostring(err))
   end
+  ok, err = pcall(writeHeartbeat)
+  if not ok then
+    logLine("heartbeat error: " .. tostring(err))
+  end
   return now + POLL
 end
 
@@ -678,6 +718,8 @@ local function startMailbox()
     fail("user-inbox/ exists but " .. outboxDir .. " does not -- create it to turn the mailbox on")
     return false
   end
+  sortie = readSortie()
+  writeHeartbeat()
   timer.scheduleFunction(poll, nil, timer.getTime() + POLL)
   return true
 end

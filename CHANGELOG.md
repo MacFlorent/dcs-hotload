@@ -5,6 +5,11 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
 
 ## [Unreleased]
 
+- **A heartbeat for drivers**: while the mailbox is on, `user-outbox/_heartbeat.lua` holds the
+  sortie name, the sim time, the version and the active runs, rewritten every second. A driver can
+  tell a restarted mission from the same one and count its timeouts in sim time, without a probe
+  command.
+
 ## [2.0.0] — 2026-10-20
 
 - **Breaking: `user-scripts/` is now `user-f10/`**, read only by the F10 menu: rename the folder.

@@ -16,29 +16,7 @@ preconditions before a "no" is trusted; a framework is driven through `Hotload.c
 Windows, a background driver that Claude Code stops keeps running and is killed by process id; a bash
 driver is never edited while it runs, since bash reads it as it goes.
 
-## The mission tells a driver its state
-
-A driver waiting on a long command has to tell a paused DCS from a dead one, and a mission that
-restarted from one still running. Silence tells nothing: the mailbox polls on a DCS timer, so a
-paused mission does not answer either. What tells them apart is the mission's sim clock, which
-freezes with a pause and restarts from 0 with the mission. Read with the sortie name, it also
-lets a driver count a command's timeout in sim time — so a paused DCS never times a run out — and
-check which mission is open before sending anything. `bin/hotload.sh run` has none of this: it
-waits in real time and reports a pause as a timeout.
-
-Skynet-IADS's in-sim suite gets it by sending its own probe command through the mailbox, every few
-seconds while it waits, answered by a library of its own in `user-lib/`
-(`{ mission = <sortie>, time = timer.getTime() }`): a driver core moved here as it is would still
-need that library from the mission. Hotload could answer it itself, two ways:
-
-- **`Hotload.status()`**, built in: the probe any driver sends. The smallest change; it still costs a
-  command round trip per look, and probe files to clear.
-- **A heartbeat file**, rewritten by hotload on its own tick: sortie name, sim time, the runs active.
-  A driver reads a file, with no command and no round trip, and it answers even while the mailbox is
-  busy. `hotload.sh run` could then wait in sim time and say "paused" or "the mission restarted".
-
-The heartbeat is the cheaper and sturdier. It belongs with the tool above: the Skynet driver
-core is the seed of that tool, and moving it here first needs this.
+It reads the mission's state from the heartbeat (`feat-heartbeat`), in place of Skynet's probe.
 
 ## Check the skill against a live mission
 
