@@ -3,21 +3,6 @@
 Prospective work. An idea taken up leaves this file in the commit that opens its spec; a dropped
 idea stays, with its reason.
 
-## A tool that drives hotload
-
-A separate tool, run on the developer's machine, that uses the mailbox as its only interface.
-This is extracted from Skynet-IADS's in-sim test engine, which was built to leave that
-repository. `bin/hotload.sh run` is ported to Python with it, so the tooling is in one language.
-
-Lessons from the SkynetMunitionTests campaign (about 300 runs) that the tool must keep: each run
-appends its own result, so a crash costs one run and the series resumes; every command gets a unique
-mailbox name, since a reused one lets a stale waiter pick up a later result; a run checks its own
-preconditions before a "no" is trusted; a framework is driven through `Hotload.callOnMain`; on
-Windows, a background driver that Claude Code stops keeps running and is killed by process id; a bash
-driver is never edited while it runs, since bash reads it as it goes.
-
-It reads the mission's state from the heartbeat (`feat-heartbeat`), in place of Skynet's probe.
-
 ## Check the skill against a live mission
 
 The skill was tested against a stand-in DCS. Run its scenarios in a real mission, from a fresh
