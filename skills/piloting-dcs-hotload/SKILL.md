@@ -54,6 +54,9 @@ Prints the outbox result and cleans the mailbox. Exit 0 done, 1 fail/refused/sto
 - `hotload.sh log [PATTERN]` — HOTLOAD lines since the last `ready`, from
   `Saved Games/DCS/Logs/dcs.log` (`--log FILE` for another). `dcs.log` times are **UTC**.
 - The mission must be running and unpaused: sim time drives every wait.
+- `user-outbox/_heartbeat.lua` tells, without a command, which mission is open, its sim time and
+  the active runs. It stays still while the mission is paused or not running: the README's
+  *Heartbeat*.
 
 ## Which code is live?
 

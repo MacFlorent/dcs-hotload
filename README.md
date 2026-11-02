@@ -128,6 +128,27 @@ return {
 
 To do what an F10 entry does from the mailbox, send what the entry contains.
 
+### Heartbeat
+
+While the mailbox is on, hotload rewrites `user-outbox/_heartbeat.lua` at startup and every
+second of sim time, so a driver can tell what the mission is doing without sending a command:
+
+```lua
+-- dcs-hotload heartbeat
+return {
+  ["mission"] = "my-mission",                 -- the sortie name; absent when the mission has none
+  ["runs"] = { ["inbox/lane-1"] = 412.3 },    -- every active run -> its start, in sim time
+  ["time"] = 431,                             -- timer.getTime()
+  ["version"] = "2.1.0",
+}
+```
+
+- Its modification time advancing means the mission is running. A file that stays still means
+  paused or not running: a paused mission runs no timer, so the heartbeat cannot tell those apart.
+- `time` going back, or another `mission`, means the mission restarted or another one is open. A
+  command in neither `runs` nor a final outbox is gone: its mission restarted under it.
+- It is rewritten in place, so a read can catch it half-written: read it again.
+
 ### Mailbox client
 
 `bin/hotload.sh` drives the mailbox from a shell (Git Bash on Windows) in one call:
