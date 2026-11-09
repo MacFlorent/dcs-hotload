@@ -17,12 +17,26 @@ Scripts can wait in sim time. No external executable.
    comment out `sanitizeModule('io')` and `sanitizeModule('lfs')`. The edit is install-wide, affects
    multiplayer integrity checks, and DCS updates revert it; dcs-hotload says so on screen when it
    is missing.
-3. **Load it at mission start**, from a `DO SCRIPT` trigger or a script the mission already
-   embeds:
+3. **Load it at mission start**: a MISSION START trigger with two `DO SCRIPT` actions. The first
+   names the folder:
 
    ```lua
-   dofile([[D:\path\to\mission\dcs-hotload\dcs-hotload.lua]])
+   BASE_HOTLOAD_PATH = [[D:\path\to\mission\dcs-hotload]]
    ```
+
+   The second loads hotload from it:
+
+   ```lua
+   local p, f, err = BASE_HOTLOAD_PATH
+   if type(p) ~= "string" or p == "" then err = "BASE_HOTLOAD_PATH is not set"
+   else f, err = loadfile(p .. "/dcs-hotload.lua") end
+   if not f then env.info("HOTLOAD: not booted: " .. tostring(err)) return end
+   Hotload = Hotload or {}; Hotload.root = p; f()
+   ```
+
+   Where the folder does not exist, as on a player's machine, the mission only logs a
+   `HOTLOAD: not booted:` line in `dcs.log` and shows nothing. A bare
+   `dofile([[...\dcs-hotload.lua]])` would raise a script error there instead.
 
 4. `dcs-hotload <version> ready` shows on screen (and `HOTLOAD: ready` in `dcs.log`); open
    **F10 → Hotload**.

@@ -10,8 +10,10 @@
       Comment out sanitizeModule('io') and ('lfs') in the install's Scripts/MissionScripting.lua,
       keeping the original as MissionScripting.lua.bak. Changes nothing without --yes.
   python hotload-setup.py patch-miz FILE [--mission DIR] [--retarget]
-      Add a MISSION START trigger that loads DIR/dcs-hotload/dcs-hotload.lua, keeping the original
-      as FILE.bak. A boot line pointing at another folder is rewritten only with --retarget.
+      Add a MISSION START trigger that sets BASE_HOTLOAD_PATH to DIR/dcs-hotload, then loads
+      dcs-hotload.lua from it when it is there (boot-guard.lua, next to this script), keeping the
+      original as FILE.bak. A boot pointing at another folder, or cleared, is rewritten only with
+      --retarget.
 
 DIR defaults to the current folder. DCS is the DCS World folder, the one holding
 Scripts/MissionScripting.lua: nothing guesses it.
@@ -26,6 +28,7 @@ table opens and how it closes, `{}` or an open pair for an empty table), so a ta
 change comes back as the same text, and numbers are kept as they were written.
 """
 import argparse
+import collections
 import os
 import posixpath
 import re
@@ -318,8 +321,42 @@ class Miz:
                 os.remove(tmp)
 
 
-def boot_line(lua_path):
-    return f"dofile([[{lua_path}]])"
+# The boot trigger: a first DO SCRIPT sets BASE_HOTLOAD_PATH, the second (BOOT_GUARD) loads
+# dcs-hotload.lua from it, or logs one line when it cannot. A bare dofile, the boot this script
+# wrote before, is still recognized: it is "unguarded".
+
+BOOT_GUARD = (Path(__file__).resolve().parent / "boot-guard.lua").read_text(encoding="utf-8").rstrip("\n")
+LUA_NAME = "dcs-hotload.lua"
+Boot = collections.namedtuple("Boot", "where path guarded")   # path: the dcs-hotload.lua, "" when cleared
+
+PATH_LINE = re.compile(r"""\s*BASE_HOTLOAD_PATH\s*=\s*(?:\[(=*)\[(.*?)\]\1\]|"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')"""
+                       r"""\s*;?\s*\Z""", re.S)
+
+
+def lua_long(s):
+    """A Lua long string holding s: [[s]], with as many = as it takes not to close early."""
+    level = ""
+    while f"]{level}]" in s:
+        level += "="
+    return f"[{level}[{s}]{level}]"
+
+
+def path_line(folder):
+    return f"BASE_HOTLOAD_PATH = {lua_long(folder)}"
+
+
+def path_of(m):
+    """The text of a string literal matched as groups (level, long, double, single)."""
+    if m.group(2) is not None:
+        return m.group(2)
+    return (m.group(3) if m.group(3) is not None else m.group(4) or "").replace("\\\\", "\\")
+
+
+def lua_in(folder):
+    if not folder:
+        return ""
+    sep = "\\" if "\\" in folder and "/" not in folder else "/"
+    return folder.rstrip("\\/") + sep + LUA_NAME
 
 
 BOOT = re.compile(r"""dofile\s*\(\s*(?:\[(=*)\[(.*?)\]\1\]|"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')\s*\)""",
@@ -329,61 +366,86 @@ BOOT = re.compile(r"""dofile\s*\(\s*(?:\[(=*)\[(.*?)\]\1\]|"((?:[^"\\]|\\.)*)"|'
 def boot_paths(text):
     paths = []
     for m in BOOT.finditer(text):
-        path = m.group(2) if m.group(2) is not None else (m.group(3) or m.group(4) or "").replace("\\\\", "\\")
-        if path.replace("\\", "/").lower().endswith("dcs-hotload.lua"):
+        path = path_of(m)
+        if path.replace("\\", "/").lower().endswith(LUA_NAME):
             paths.append(path)
     return paths
 
 
-def find_boot(miz):
-    """Every place the mission loads a dcs-hotload.lua: [(where, path)]."""
-    found = []
+def scripts(miz):
+    """Each DO SCRIPT action of the triggers: (trigger index, action dict)."""
     for n, rule in miz.mission.get("trigrules", {}).items():
         for action in rule.get("actions", {}).values():
             if isinstance(action, dict) and action.get("predicate") == "a_do_script":
-                found += [(f"trigger {n}", p) for p in boot_paths(action.get("text", ""))]
+                yield n, action
+
+
+def find_boot(miz):
+    """Every place the mission boots a dcs-hotload.lua: [Boot]."""
+    found = []
+    for n, action in scripts(miz):
+        text = action.get("text", "")
+        m = PATH_LINE.match(text)
+        if m:
+            found.append(Boot(f"trigger {n}", lua_in(path_of(m)), True))
+        else:
+            found += [Boot(f"trigger {n}", p, False) for p in boot_paths(text)]
     for name, data in miz.entries.items():
         if name.startswith("l10n/") and name.lower().endswith(".lua"):
-            found += [(f"embedded {name}", p) for p in boot_paths(data.decode("utf-8", "replace"))]
+            found += [Boot(f"embedded {name}", p, False) for p in boot_paths(data.decode("utf-8", "replace"))]
     return found
 
 
-def add_boot(miz, lua_path):
-    """A MISSION START trigger running the boot line: trigrules (what the editor shows) and trig
-    (what DCS runs), index for index."""
+def add_boot(miz, folder):
+    """A MISSION START trigger setting BASE_HOTLOAD_PATH to `folder`, then running the guard:
+    trigrules (what the editor shows) and trig (what DCS runs), index for index."""
     rules = miz.mission.setdefault("trigrules", {})
     trig = miz.mission.setdefault("trig", {})
     for part in ("actions", "conditions", "flag", "funcStartup"):
         trig.setdefault(part, {})
     n = max([k for k in rules if isinstance(k, int)] + [0]) + 1
-    text = boot_line(lua_path)
-    rules[n] = {"comment": "dcs-hotload", "predicate": "triggerStart", "eventlist": "",
+    texts = (path_line(folder), BOOT_GUARD)
+    rules[n] = {"comment": "dcs-hotload boot", "predicate": "triggerStart", "eventlist": "",
                 "colorItem": "0x00ffffff", "rules": {},
-                "actions": {1: {"predicate": "a_do_script", "text": text}}}
-    trig["actions"][n] = f"a_do_script({lua_quote(text)});"
+                "actions": {i: {"predicate": "a_do_script", "text": t} for i, t in enumerate(texts, 1)}}
+    trig["actions"][n] = "".join(f"a_do_script({lua_quote(t)});" for t in texts)
     trig["conditions"][n] = "return(true)"
     trig["flag"][n] = True
     trig["funcStartup"][n] = f"if mission.trig.conditions[{n}]() then mission.trig.actions[{n}]() end"
 
 
-def retarget_boot(miz, old, new):
-    """Rewrites a boot line found by find_boot from `old` to `new`, wherever it is."""
-    for n, rule in miz.mission.get("trigrules", {}).items():
-        for action in rule.get("actions", {}).values():
-            if isinstance(action, dict) and old in action.get("text", ""):
-                action["text"] = action["text"].replace(old, new)
-                actions = miz.mission.get("trig", {}).get("actions", {})
-                if n in actions:
-                    actions[n] = actions[n].replace(lua_quote(old)[1:-1], lua_quote(new)[1:-1])
-    for name, data in miz.entries.items():
-        if name.startswith("l10n/") and name.lower().endswith(".lua"):
-            miz.entries[name] = data.replace(old.encode("utf-8"), new.encode("utf-8"))
+def replace_in_trigger(miz, n, action, new_text):
+    """Rewrites a DO SCRIPT action in both copies DCS keeps: the trigrules text and the compiled
+    trig.actions string, which must hold the old text exactly once."""
+    actions = miz.mission.get("trig", {}).get("actions", {})
+    old_q, new_q = lua_quote(action["text"]), lua_quote(new_text)
+    compiled = actions.get(n, "")
+    if compiled.count(old_q) != 1:
+        raise FormatError(f"trigger {n}: the compiled trigger does not hold its DO SCRIPT text once")
+    actions[n] = compiled.replace(old_q, new_q)
+    action["text"] = new_text
+
+
+def retarget_boot(miz, boot, folder):
+    """Points a Boot found by find_boot at `folder`, keeping its form."""
+    if boot.guarded:
+        for n, action in scripts(miz):
+            if f"trigger {n}" == boot.where and PATH_LINE.match(action.get("text", "")):
+                replace_in_trigger(miz, n, action, path_line(folder))
+        return
+    old, new = boot.path, lua_in(folder)
+    for n, action in scripts(miz):
+        if f"trigger {n}" == boot.where and old in action.get("text", ""):
+            replace_in_trigger(miz, n, action, action["text"].replace(old, new))
+    name = boot.where[len("embedded "):]
+    if boot.where.startswith("embedded ") and name in miz.entries:
+        miz.entries[name] = miz.entries[name].replace(old.encode("utf-8"), new.encode("utf-8"))
 
 
 def same_path(a, b):
     def norm(p):
         return posixpath.normpath(p.replace("\\", "/")).lower()
-    return norm(a) == norm(b)
+    return bool(a) and bool(b) and norm(a) == norm(b)
 
 
 # ── Versions and the release file set ──────────────────────────────────────────────────────────
@@ -496,28 +558,42 @@ def unlock(dcs_arg, yes):
     return OK
 
 
+def unguarded_note(boot):
+    return (f"{boot.where} boots with a bare dofile: where that file is missing, as on a player's "
+            "machine, DCS shows a script error. Remove it and run patch-miz for a boot that only logs")
+
+
+def what_it_loads(boot):
+    return f"its boot path is cleared ({boot.where})" if not boot.path else f"loads {boot.path} ({boot.where})"
+
+
 def patch_miz(miz_path, mission, retarget):
-    lua = str((mission / "dcs-hotload" / "dcs-hotload.lua").resolve())
+    folder = str((mission / "dcs-hotload").resolve())
+    lua = lua_in(folder)
     miz = Miz.read(miz_path)
     found = find_boot(miz)
-    if any(same_path(path, lua) for _, path in found):
+    here = [b for b in found if same_path(b.path, lua)]
+    if here:
         say(f"{miz_path.name} already loads {lua}")
+        for boot in here:
+            if not boot.guarded:
+                say(unguarded_note(boot))
         return OK
     if found and not retarget:
-        for where, path in found:
-            say(f"{miz_path.name} loads {path} ({where}), not {lua}")
+        for boot in found:
+            say(f"{miz_path.name} {what_it_loads(boot)}, not {lua}")
         say("rerun with --retarget to point it at this mission's copy, once the user agrees")
         return DECIDE
     backup = miz_path.with_name(miz_path.name + ".bak")
     if not backup.exists():
         shutil.copy2(miz_path, backup)
     if found:
-        for where, path in found:
-            retarget_boot(miz, path, lua)
-            say(f"{where}: now loads {lua}")
+        for boot in found:
+            retarget_boot(miz, boot, folder)
+            say(f"{boot.where}: now loads {lua}")
     else:
-        add_boot(miz, lua)
-        say(f"added a MISSION START trigger loading {lua}")
+        add_boot(miz, folder)
+        say(f"added a MISSION START trigger loading {lua} where it is there, and only logging elsewhere")
     miz.write(miz_path)
     say("re-open the mission from the Mission menu: Restart replays the copy loaded at launch")
     return OK
@@ -551,10 +627,14 @@ def status(mission, dcs_arg, miz_arg):
         return DECIDE
     expected = str(lua.resolve())
     found = find_boot(Miz.read(mizs[0]))
-    if any(same_path(path, expected) for _, path in found):
+    here = [b for b in found if same_path(b.path, expected)]
+    if here:
         say(f"{mizs[0].name} loads this mission's dcs-hotload")
+        for boot in here:
+            if not boot.guarded:
+                say(unguarded_note(boot))
     else:
-        say(f"{mizs[0].name} " + (f"loads {found[0][1]} instead: patch-miz --retarget" if found
+        say(f"{mizs[0].name} " + (f"{what_it_loads(found[0])} instead: patch-miz --retarget" if found
                                    else "does not load dcs-hotload: run patch-miz"))
         ready = False
     return OK if ready else DECIDE

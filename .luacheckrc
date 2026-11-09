@@ -11,10 +11,16 @@ files["dcs-hotload.lua"] = {
   read_globals = { "env", "timer", "trigger", "missionCommands", "lfs" },
 }
 
+-- The second DO SCRIPT action of the boot trigger hotload-setup.py writes; the first sets the path.
+files["skills/piloting-dcs-hotload/scripts/boot-guard.lua"] = {
+  globals = { "Hotload" },
+  read_globals = { "env", "BASE_HOTLOAD_PATH" },
+}
+
 files["test/**"] = {
   -- The stub installs the DCS globals and each suite declares its luaunit tables globally.
-  globals = { "Hotload", "HotloadCore", "env", "timer", "trigger", "missionCommands", "io", "debug" },
-  read_globals = { "lfs" },
+  globals = { "Hotload", "HotloadCore", "env", "timer", "trigger", "missionCommands", "io", "debug", "lfs",
+    "BASE_HOTLOAD_PATH" },
   allow_defined_top = true,
   self = false,                                                  -- luaunit's method style
 }

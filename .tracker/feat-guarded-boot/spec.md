@@ -13,8 +13,8 @@ The boot line `patch-miz` writes, and the README gives, is a bare
 `dofile([[<absolute path>\dcs-hotload\dcs-hotload.lua]])`. Where that file does not exist, which
 is every machine but the developer's, DCS raises a script error when the mission starts. A
 mission whose trigger stays in the copy handed to players shows that error to anyone who opens or
-hosts it. A mission rebuilt from source at every build (VEAF MCT v6 rebuilds its `.miz` from
-`src/mission/`) cannot leave the trigger out of one build only.
+hosts it. A mission rebuilt from source at every build cannot leave the trigger out of one build
+only.
 
 In multiplayer, mission scripts run on the server only, so a client never sees the error. It
 shows to a player who opens the mission alone or hosts it.
@@ -34,27 +34,28 @@ BASE_HOTLOAD_PATH = [[D:\Missions\M\dcs-hotload]]
 ```
 
 ```lua
-local p = BASE_HOTLOAD_PATH
-local f, err
+local p, f, err = BASE_HOTLOAD_PATH
 if type(p) ~= "string" or p == "" then err = "BASE_HOTLOAD_PATH is not set"
 else f, err = loadfile(p .. "/dcs-hotload.lua") end
 if not f then env.info("HOTLOAD: not booted: " .. tostring(err)) return end
 Hotload = Hotload or {}; Hotload.root = p; f()
 ```
 
-The second action is the same text in every mission, and is written on one line (the editor's
-DO SCRIPT box). Where the variable is empty or the file absent, the mission logs one
-`HOTLOAD: not booted:` line in `dcs.log` and shows nothing. `loadfile` is not removed by a stock
-`MissionScripting.lua`, so the guard needs neither `io` nor `lfs`. Once the file is found, a
-missing `io`/`lfs` is still reported on screen by hotload: only a developer's machine gets that
-far.
+The second action is the same text in every mission: `boot-guard.lua`, next to the setup
+script, which `patch-miz` writes as it is and `test/test_boot.lua` runs against the stub. A
+test checks that the README gives the same text. Where the variable is empty or the file
+absent, the mission logs one `HOTLOAD: not booted:` line in `dcs.log` and shows nothing.
+`loadfile` is not removed by a stock `MissionScripting.lua`, so the guard needs neither `io` nor
+`lfs`. Once the file is found, a missing `io`/`lfs` is still reported on screen by hotload: only a
+developer's machine gets that far.
 
-`find_boot` reads the variable's value as the boot folder. `status` tells a cleared path apart from
-a missing trigger. `--retarget` rewrites the variable. The bare `dofile` keeps being recognized,
-in triggers and in embedded scripts.
+`find_boot` reads the variable's value as the boot folder, wherever the assignment is: in the
+trigger that holds the guard or in a trigger of its own. `status` tells a cleared path apart from
+a missing trigger. `--retarget` rewrites the variable, in both copies DCS keeps of the text. The
+bare `dofile` keeps being recognized, in triggers and in embedded scripts.
 
-The README's setup step and the header of `dcs-hotload.lua` give the two actions, not the bare
-`dofile`.
+The README's setup step and the skill's `setup.md` give the two actions; the header of
+`dcs-hotload.lua` points at the README.
 
 ### 2. `boot-path`: show, set or clear the folder
 
@@ -71,17 +72,11 @@ compiled `trig.actions` string (what DCS runs). Both change, and the command ref
 where it does not find exactly one assignment in each. `--set` refuses a folder without
 `dcs-hotload.lua`. The rewrite is atomic and keeps every other zip entry byte for byte.
 
-### 3. An extracted `mission` file wherever a `.miz` is taken
-
-`patch-miz`, `boot-path` and `status --miz` also take a bare `mission` file, such as a VEAF
-mission's `src/mission/mission`, so the trigger lives in the source and survives every build. The
-file is written back in its own layout: indent, key style and line endings.
-
-### 4. Guidance: handing a mission to players
+### 3. Guidance: handing a mission to players
 
 The skill's `setup.md` says what is safe to ship: the guarded trigger is; a bare `dofile` is not.
-It says to clear the path when a mission leaves the developer's machine, after the build for a
-mission built from source. The README gets one line on the same point.
+It says to clear the path when a mission leaves the developer's machine. The README gets one line
+on the same point.
 
 ## Decisions
 
@@ -98,8 +93,12 @@ mission built from source. The README gets one line on the same point.
 
 ## Out of scope
 
-- A post-build hook in VEAF MCT: `build.py` in the mission runs the build, then `boot-path
-  --clear`.
+- Any mission build tool. hotload works on a `.miz`. A mission built from source gets the
+  trigger the way that tool takes any trigger, for instance by patching a built `.miz` and
+  extracting it back into the source. Running `boot-path --clear` after a build is the mission's
+  own build step.
+- Reading or writing an extracted `mission` file: patching the `.miz` and extracting it back
+  covers that need.
 - Hiding hotload's F10 menu or its `ready` message from players: both appear only where hotload
   booted, which the guard limits to the developer's machine.
 
@@ -109,7 +108,6 @@ mission built from source. The README gets one line on the same point.
    header of `dcs-hotload.lua`. **Needs an in-game check**: a boot through `loadfile` with
    `Hotload.root` set; a cleared path; an unlocked install without the folder; a stock install.
 2. `boot-path`.
-3. The extracted `mission` file.
-4. The guidance in `setup.md`, unless it rode with 2.
+3. The guidance in `setup.md`, unless it rode with 2.
 
 ## Comments
