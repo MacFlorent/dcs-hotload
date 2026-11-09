@@ -11,6 +11,10 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
   logs one `HOTLOAD: not booted:` line and shows nothing; a bare `dofile` raised a script error
   there. A mission booting with a bare `dofile` keeps it: `status` and `patch-miz` say so, and
   removing it before running `patch-miz` gives the new trigger.
+- **Setup reads a `.miz` built by VEAF Mission Creation Tools**: `status --miz` and `patch-miz`
+  failed with `expected '['` on a mission written with bare keys (`coalition = {`), as VEAF MCT
+  6.36 writes it. They now read any of the layouts these missions come in, and `patch-miz` writes
+  the mission back in the layout it read, so only the added trigger changes.
 
 ## [3.0.0] — 2026-11-02
 

@@ -95,6 +95,65 @@ class TableFormat(unittest.TestCase):
         with self.assertRaises(setup.FormatError):
             setup.lua_load("mission = { [1] = some_function() }")
 
+    def test_round_trip_is_exact_with_bare_keys(self):
+        name, value = setup.lua_load(BARE)
+        self.assertEqual(setup.lua_dump(name, value, setup.Style.of(BARE)), BARE)
+
+    def test_round_trip_is_exact_with_inline_braces_and_crlf(self):
+        name, value = setup.lua_load(INLINE_CRLF)
+        self.assertEqual(setup.lua_dump(name, value, setup.Style.of(INLINE_CRLF)), INLINE_CRLF)
+
+    def test_every_layout_reads_the_same_table(self):
+        tables = [setup.lua_load(text)[1] for text in (SPACES, BARE, INLINE_CRLF)]
+        self.assertEqual(tables[1], tables[0])
+        self.assertEqual(tables[2], tables[0])
+
+    def test_bare_keys_only_where_lua_allows_them(self):
+        value = {"ok": True, "end": True, "two words": True, "9lives": True, 1: True}
+        out = setup.lua_dump("x", value, setup.Style.of(BARE))
+        self.assertIn("  ok = true,\n", out)
+        self.assertIn('  ["end"] = true,\n', out)
+        self.assertIn('  ["two words"] = true,\n', out)
+        self.assertIn('  ["9lives"] = true,\n', out)
+        self.assertIn("  [1] = true,\n", out)
+        self.assertEqual(setup.lua_load(out)[1], value)
+
+    def test_an_escaped_crlf_is_a_newline(self):
+        _, x = setup.lua_load('x = {\r\n    [1] = "a\\\r\nb",\r\n} -- end of x\r\n')
+        self.assertEqual(x[1], "a\nb")
+
+
+# What VEAF Mission Creation Tools 6.36 writes: bare keys, braces on the key's line, no end comments.
+BARE = '''mission =
+{
+  trig = {
+    actions = {
+      [1] = "a_do_script(\\"x\\");",
+    },
+    flag = {},
+  },
+  x = -0.0051662641880086,
+  big = 1e+20,
+  on = true,
+  off = false,
+}'''
+
+# What earlier VEAF Mission Creation Tools write: bracketed keys, braces on the key's line, CRLF.
+INLINE_CRLF = '''mission = {
+    ["trig"] = {
+        ["actions"] = {
+            [1] = "a_do_script(\\"x\\");",
+        }, -- end of ["actions"]
+        ["flag"] = {
+        }, -- end of ["flag"]
+    }, -- end of ["trig"]
+    ["x"] = -0.0051662641880086,
+    ["big"] = 1e+20,
+    ["on"] = true,
+    ["off"] = false,
+} -- end of mission
+'''.replace("\n", "\r\n")
+
 
 def dcs_install():
     """The first line of dcs-install.txt, next to this file, that is neither blank nor a # comment."""
@@ -291,6 +350,20 @@ class BootLine(Scratch):
         self.assertEqual(setup.main(["patch-miz", str(mission_dir / "m.miz"), "--mission", str(mission_dir)]),
                          setup.OK)
         self.assertEqual((mission_dir / "m.miz").read_bytes(), before)
+
+    def test_patch_keeps_the_layout_of_a_bare_key_mission(self):
+        entries = miz_entries(FIXTURE)
+        _, mission = setup.lua_load(entries["mission"].decode("utf-8"))
+        bare = setup.lua_dump("mission", mission, setup.Style.of(BARE))
+        with zipfile.ZipFile(self.miz, "w") as z:
+            for name, data in entries.items():
+                z.writestr(name, bare.encode("utf-8") if name == "mission" else data)
+
+        self.assertEqual(setup.main(["patch-miz", str(self.miz), "--mission", str(self.dir)]), setup.OK)
+        text = miz_entries(self.miz)["mission"].decode("utf-8")
+        self.assertIn("\n  trigrules = {\n    [1] = {\n", text)
+        self.assertNotIn('["', text.split("trigrules", 1)[0])
+        self.assertEqual(len(setup.find_boot(setup.Miz.read(self.miz))), 1)
 
     def test_patch_command_asks_before_retargeting(self):
         miz = setup.Miz.read(self.miz)
