@@ -6,7 +6,9 @@ The round trip over every mission that comes with DCS World takes about a minute
 it runs only when test/python/dcs-install.txt names a DCS install (a copy of
 test/python/dcs-install.example.txt). Run it after changing the .miz reader or writer.
 """
+import contextlib
 import importlib.util
+import io
 import os
 import shutil
 import tempfile
@@ -137,64 +139,127 @@ class BootLine(Scratch):
         super().setUp()
         self.miz = self.dir / "m.miz"
         shutil.copy(FIXTURE, self.miz)
-        self.lua = r"D:\Missions\M\dcs-hotload\dcs-hotload.lua"
+        self.folder = r"D:\Missions\M\dcs-hotload"
+        self.lua = self.folder + r"\dcs-hotload.lua"
+
+    def unguarded(self, lua_path):
+        """A mission that boots hotload the old way: a trigger with a bare dofile."""
+        miz = setup.Miz.read(self.miz)
+        setup.add_boot(miz, "x")
+        rule = miz.mission["trigrules"][1]
+        rule["actions"] = {1: {"predicate": "a_do_script", "text": f"dofile([[{lua_path}]])"}}
+        miz.mission["trig"]["actions"][1] = 'a_do_script(%s);' % setup.lua_quote(f"dofile([[{lua_path}]])")
+        return miz
 
     def test_absent_in_an_empty_mission(self):
         self.assertEqual(setup.find_boot(setup.Miz.read(self.miz)), [])
 
-    def test_added_as_a_mission_start_trigger(self):
+    def test_added_as_a_mission_start_trigger_setting_the_path_then_guarding(self):
         miz = setup.Miz.read(self.miz)
-        setup.add_boot(miz, self.lua)
+        setup.add_boot(miz, self.folder)
         miz.write(self.miz)
 
         mission = setup.Miz.read(self.miz).mission
         rule = mission["trigrules"][1]
         self.assertEqual(rule["predicate"], "triggerStart")
-        self.assertEqual(rule["actions"][1]["predicate"], "a_do_script")
-        self.assertEqual(rule["actions"][1]["text"], setup.boot_line(self.lua))
+        self.assertEqual(rule["comment"], "dcs-hotload boot")
+        path = f"BASE_HOTLOAD_PATH = [[{self.folder}]]"
+        self.assertEqual(rule["actions"][1], {"predicate": "a_do_script", "text": path})
+        self.assertEqual(rule["actions"][2], {"predicate": "a_do_script", "text": setup.BOOT_GUARD})
         trig = mission["trig"]
-        self.assertEqual(trig["actions"][1], 'a_do_script(%s);' % setup.lua_quote(setup.boot_line(self.lua)))
+        self.assertEqual(trig["actions"][1], "a_do_script(%s);a_do_script(%s);"
+                         % (setup.lua_quote(path), setup.lua_quote(setup.BOOT_GUARD)))
         self.assertEqual(trig["conditions"][1], "return(true)")
         self.assertIs(trig["flag"][1], True)
         self.assertEqual(trig["funcStartup"][1],
                          "if mission.trig.conditions[1]() then mission.trig.actions[1]() end")
 
+    def test_the_guard_is_the_tested_file(self):
+        guard = ROOT / "skills" / "piloting-dcs-hotload" / "scripts" / "boot-guard.lua"
+        self.assertEqual(setup.BOOT_GUARD, guard.read_text(encoding="utf-8").rstrip("\n"))
+
+    def test_the_readme_gives_the_same_guard(self):
+        listed = "".join("   " + line + "\n" for line in setup.BOOT_GUARD.split("\n"))   # in a list item
+        self.assertIn(listed, (ROOT / "README.md").read_text(encoding="utf-8"))
+
+    def test_a_folder_with_brackets_gets_a_longer_bracket(self):
+        miz = setup.Miz.read(self.miz)
+        setup.add_boot(miz, r"D:\a]]b\dcs-hotload")
+        self.assertEqual(miz.mission["trigrules"][1]["actions"][1]["text"],
+                         r"BASE_HOTLOAD_PATH = [=[D:\a]]b\dcs-hotload]=]")
+        self.assertEqual(setup.find_boot(miz)[0].path, r"D:\a]]b\dcs-hotload\dcs-hotload.lua")
+
     def test_added_after_existing_triggers_index_for_index(self):
         miz = setup.Miz.read(self.miz)
-        setup.add_boot(miz, r"C:\other\dcs-hotload.lua")
-        setup.add_boot(miz, self.lua)
+        setup.add_boot(miz, r"C:\other\dcs-hotload")
+        setup.add_boot(miz, self.folder)
         self.assertEqual(sorted(miz.mission["trigrules"]), [1, 2])
         self.assertEqual(sorted(miz.mission["trig"]["funcStartup"]), [1, 2])
         self.assertIn("conditions[2]", miz.mission["trig"]["funcStartup"][2])
 
     def test_found_once_added(self):
         miz = setup.Miz.read(self.miz)
-        setup.add_boot(miz, self.lua)
-        self.assertEqual(setup.find_boot(miz), [("trigger 1", self.lua)])
+        setup.add_boot(miz, self.folder)
+        self.assertEqual(setup.find_boot(miz), [setup.Boot("trigger 1", self.lua, True)])
 
-    def test_found_in_an_embedded_script(self):
+    def test_found_cleared(self):
+        miz = setup.Miz.read(self.miz)
+        setup.add_boot(miz, "")
+        self.assertEqual(setup.find_boot(miz), [setup.Boot("trigger 1", "", True)])
+
+    def test_found_with_the_path_in_a_trigger_of_its_own(self):
+        miz = setup.Miz.read(self.miz)
+        setup.add_boot(miz, self.folder)
+        rule = miz.mission["trigrules"][1]
+        miz.mission["trigrules"][2] = dict(rule, actions={1: rule["actions"].pop(2)})
+        self.assertEqual(setup.find_boot(miz), [setup.Boot("trigger 1", self.lua, True)])
+
+    def test_found_unguarded_in_a_trigger(self):
+        self.assertEqual(setup.find_boot(self.unguarded(self.lua)), [setup.Boot("trigger 1", self.lua, False)])
+
+    def test_found_unguarded_in_an_embedded_script(self):
         miz = setup.Miz.read(self.miz)
         miz.entries["l10n/DEFAULT/boot.lua"] = b'-- mission scripts\ndofile([[' + self.lua.encode() + b']])\n'
-        self.assertEqual(setup.find_boot(miz), [("embedded l10n/DEFAULT/boot.lua", self.lua)])
+        self.assertEqual(setup.find_boot(miz), [setup.Boot("embedded l10n/DEFAULT/boot.lua", self.lua, False)])
 
-    def test_found_with_a_quoted_path(self):
+    def test_found_unguarded_with_a_quoted_path(self):
         miz = setup.Miz.read(self.miz)
         miz.entries["l10n/DEFAULT/boot.lua"] = b'dofile("D:/Missions/M/dcs-hotload/dcs-hotload.lua")\n'
-        self.assertEqual(setup.find_boot(miz), [("embedded l10n/DEFAULT/boot.lua",
-                                                  "D:/Missions/M/dcs-hotload/dcs-hotload.lua")])
+        self.assertEqual(setup.find_boot(miz), [setup.Boot("embedded l10n/DEFAULT/boot.lua",
+                                                            "D:/Missions/M/dcs-hotload/dcs-hotload.lua", False)])
 
-    def test_rewritten_in_place_when_pointing_elsewhere(self):
+    def test_retargeting_rewrites_the_path_in_both_copies(self):
         miz = setup.Miz.read(self.miz)
-        setup.add_boot(miz, r"C:\old\dcs-hotload\dcs-hotload.lua")
-        setup.retarget_boot(miz, r"C:\old\dcs-hotload\dcs-hotload.lua", self.lua)
-        self.assertEqual(setup.find_boot(miz), [("trigger 1", self.lua)])
+        setup.add_boot(miz, r"C:\old\dcs-hotload")
+        setup.retarget_boot(miz, setup.find_boot(miz)[0], self.folder)
+        self.assertEqual(setup.find_boot(miz), [setup.Boot("trigger 1", self.lua, True)])
         self.assertNotIn("old", miz.mission["trig"]["actions"][1])
+        self.assertIn(setup.lua_quote(f"BASE_HOTLOAD_PATH = [[{self.folder}]]"), miz.mission["trig"]["actions"][1])
         self.assertEqual(len(miz.mission["trigrules"]), 1)
+
+    def test_retargeting_a_cleared_path(self):
+        miz = setup.Miz.read(self.miz)
+        setup.add_boot(miz, "")
+        setup.retarget_boot(miz, setup.find_boot(miz)[0], self.folder)
+        self.assertEqual(setup.find_boot(miz), [setup.Boot("trigger 1", self.lua, True)])
+
+    def test_retargeting_refuses_a_path_the_compiled_trigger_does_not_hold(self):
+        miz = setup.Miz.read(self.miz)
+        setup.add_boot(miz, r"C:\old\dcs-hotload")
+        miz.mission["trig"]["actions"][1] = "a_do_script(\"something else\");"
+        with self.assertRaises(setup.FormatError):
+            setup.retarget_boot(miz, setup.find_boot(miz)[0], self.folder)
+
+    def test_retargeting_an_unguarded_boot_keeps_it_unguarded(self):
+        miz = self.unguarded(r"C:\old\dcs-hotload\dcs-hotload.lua")
+        setup.retarget_boot(miz, setup.find_boot(miz)[0], self.folder)
+        self.assertEqual(setup.find_boot(miz), [setup.Boot("trigger 1", self.lua, False)])
+        self.assertNotIn("old", miz.mission["trig"]["actions"][1])
 
     def test_other_entries_unchanged(self):
         before = miz_entries(self.miz)
         miz = setup.Miz.read(self.miz)
-        setup.add_boot(miz, self.lua)
+        setup.add_boot(miz, self.folder)
         miz.write(self.miz)
         after = miz_entries(self.miz)
         self.assertEqual(list(after), list(before))
@@ -206,6 +271,7 @@ class BootLine(Scratch):
         self.assertTrue(setup.same_path(r"D:\Missions\M\dcs-hotload\dcs-hotload.lua",
                                         "d:/missions/m/dcs-hotload/dcs-hotload.lua"))
         self.assertFalse(setup.same_path(r"D:\Missions\M\dcs-hotload.lua", r"D:\Missions\N\dcs-hotload.lua"))
+        self.assertFalse(setup.same_path("", r"D:\Missions\N\dcs-hotload.lua"))
 
     def test_patch_command(self):
         mission_dir = self.dir
@@ -217,7 +283,8 @@ class BootLine(Scratch):
         self.assertTrue((mission_dir / "m.miz.bak").exists())
         found = setup.find_boot(setup.Miz.read(mission_dir / "m.miz"))
         self.assertEqual(len(found), 1)
-        self.assertTrue(setup.same_path(found[0][1], str(lua)))
+        self.assertTrue(found[0].guarded)
+        self.assertTrue(setup.same_path(found[0].path, str(lua)))
 
         # Again: nothing to do.
         before = (mission_dir / "m.miz").read_bytes()
@@ -227,13 +294,34 @@ class BootLine(Scratch):
 
     def test_patch_command_asks_before_retargeting(self):
         miz = setup.Miz.read(self.miz)
-        setup.add_boot(miz, r"C:\old\dcs-hotload\dcs-hotload.lua")
+        setup.add_boot(miz, r"C:\old\dcs-hotload")
         miz.write(self.miz)
         args = ["patch-miz", str(self.miz), "--mission", str(self.dir)]
         self.assertEqual(setup.main(args), setup.DECIDE)
         self.assertEqual(setup.main(args + ["--retarget"]), setup.OK)
-        self.assertTrue(setup.same_path(setup.find_boot(setup.Miz.read(self.miz))[0][1],
+        self.assertTrue(setup.same_path(setup.find_boot(setup.Miz.read(self.miz))[0].path,
                                         str(self.dir / "dcs-hotload" / "dcs-hotload.lua")))
+
+    def test_patch_command_asks_before_setting_a_cleared_path(self):
+        miz = setup.Miz.read(self.miz)
+        setup.add_boot(miz, "")
+        miz.write(self.miz)
+        args = ["patch-miz", str(self.miz), "--mission", str(self.dir)]
+        self.assertEqual(setup.main(args), setup.DECIDE)
+        self.assertEqual(setup.main(args + ["--retarget"]), setup.OK)
+        self.assertTrue(setup.same_path(setup.find_boot(setup.Miz.read(self.miz))[0].path,
+                                        str(self.dir / "dcs-hotload" / "dcs-hotload.lua")))
+
+    def test_patch_command_leaves_an_unguarded_boot_of_this_mission_alone(self):
+        lua = str((self.dir / "dcs-hotload" / "dcs-hotload.lua").resolve())
+        self.unguarded(lua).write(self.miz)
+        before = self.miz.read_bytes()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = setup.main(["patch-miz", str(self.miz), "--mission", str(self.dir)])
+        self.assertEqual(code, setup.OK)
+        self.assertEqual(self.miz.read_bytes(), before)
+        self.assertIn("bare dofile", out.getvalue())
 
 
 # ── Deploying the tool into a mission folder ────────────────────────────────────────────────────
@@ -387,6 +475,35 @@ class Status(Scratch):
         setup.main(["unlock", "--dcs", str(self.dcs), "--yes"])
         setup.main(["patch-miz", str(self.mission / "m.miz"), "--mission", str(self.mission)])
         self.assertEqual(setup.main(self.args), setup.OK)
+
+    def status_of(self, folder):
+        setup.main(["deploy", "--mission", str(self.mission)])
+        setup.main(["unlock", "--dcs", str(self.dcs), "--yes"])
+        miz = setup.Miz.read(self.mission / "m.miz")
+        setup.add_boot(miz, folder)
+        miz.write(self.mission / "m.miz")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = setup.main(self.args)
+        return code, out.getvalue()
+
+    def test_a_cleared_path_is_not_set_up(self):
+        code, out = self.status_of("")
+        self.assertEqual(code, setup.DECIDE)
+        self.assertIn("boot path is cleared", out)
+
+    def test_an_unguarded_boot_is_set_up_and_said_so(self):
+        setup.main(["deploy", "--mission", str(self.mission)])
+        setup.main(["unlock", "--dcs", str(self.dcs), "--yes"])
+        lua = str((self.mission / "dcs-hotload" / "dcs-hotload.lua").resolve())
+        miz = setup.Miz.read(self.mission / "m.miz")
+        miz.entries["l10n/DEFAULT/boot.lua"] = f"dofile([[{lua}]])\n".encode("utf-8")
+        miz.write(self.mission / "m.miz")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = setup.main(self.args)
+        self.assertEqual(code, setup.OK)
+        self.assertIn("bare dofile", out.getvalue())
 
     def test_usage(self):
         self.assertEqual(setup.main(["nonsense"]), setup.USAGE)
