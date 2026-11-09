@@ -46,13 +46,17 @@ message says so.
 python <skill>/scripts/hotload-setup.py patch-miz <mission>.miz
 ```
 
-Adds a MISSION START trigger running `dofile([[<mission>\dcs-hotload\dcs-hotload.lua]])`, with an
-absolute path, and keeps the original as `<mission>.miz.bak`. Nothing else in the file changes.
+Adds a MISSION START trigger that sets `BASE_HOTLOAD_PATH` to `<mission>\dcs-hotload` (an
+absolute path), then loads `dcs-hotload.lua` from it, and keeps the original as
+`<mission>.miz.bak`. Nothing else in the file changes. Where the folder is missing, the mission
+only logs `HOTLOAD: not booted:` in `dcs.log`.
 
-- A boot line already loading this mission's copy, from a trigger or from a script the mission
-  embeds: nothing to do.
-- A boot line loading **another folder's** copy (a mission moved or copied) returns 2: say which,
-  and `patch-miz --retarget` rewrites it after asking.
+- A boot already loading this mission's copy, from a trigger or from a script the mission
+  embeds: nothing to do. A bare `dofile` is reported as such, since it raises a script error
+  where the file is missing; it stays until the user removes it, and `patch-miz` then adds the
+  trigger.
+- A boot loading **another folder's** copy (a mission moved or copied), or whose path is
+  cleared, returns 2: say which, and `patch-miz --retarget` rewrites it after asking.
 
 Then **the user re-opens the mission from the Mission menu**: Restart replays the copy loaded at
 launch, not the patched file.

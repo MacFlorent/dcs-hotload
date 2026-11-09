@@ -5,6 +5,13 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
 
 ## [Unreleased]
 
+- **A boot trigger that stays quiet where hotload is not installed**: the setup step in the README
+  and `patch-miz` now give a MISSION START trigger that sets `BASE_HOTLOAD_PATH`, then loads
+  `dcs-hotload.lua` from it. Where the folder is missing, as on a player's machine, the mission
+  logs one `HOTLOAD: not booted:` line and shows nothing; a bare `dofile` raised a script error
+  there. A mission booting with a bare `dofile` keeps it: `status` and `patch-miz` say so, and
+  removing it before running `patch-miz` gives the new trigger.
+
 ## [3.0.0] — 2026-11-02
 
 - **A heartbeat for drivers**: while the mailbox is on, `user-outbox/_heartbeat.lua` holds the

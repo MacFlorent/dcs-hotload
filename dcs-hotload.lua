@@ -2,7 +2,7 @@
 dcs-hotload -- run Lua scripts inside a live DCS mission from the F10 menu or a file mailbox,
 re-read from disk on every run, with sim-time waits. No external executable.
 
-Load once at mission start:
+Load once at mission start, from the MISSION START trigger README.md gives (Setup, step 3), or:
   dofile([[D:\...\dcs-hotload\dcs-hotload.lua]])
 
 Folders next to this file:
