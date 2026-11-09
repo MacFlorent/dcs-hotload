@@ -36,7 +36,8 @@ Scripts can wait in sim time. No external executable.
 
    Where the folder does not exist, as on a player's machine, the mission only logs a
    `HOTLOAD: not booted:` line in `dcs.log` and shows nothing. A bare
-   `dofile([[...\dcs-hotload.lua]])` would raise a script error there instead.
+   `dofile([[...\dcs-hotload.lua]])` would raise a script error there instead. Before sharing the
+   mission, empty the path (`BASE_HOTLOAD_PATH = [[]]`), so the file carries no local folder.
 
 4. `dcs-hotload <version> ready` shows on screen (and `HOTLOAD: ready` in `dcs.log`); open
    **F10 → Hotload**.

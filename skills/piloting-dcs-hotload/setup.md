@@ -74,3 +74,21 @@ The quoting is Bash's, which PowerShell also takes; cmd does not take single quo
 `py` stands in for `python` when only the launcher is on the `PATH`.
 
 When DCS is not running, say that this step is still to do.
+
+## Handing the mission to players
+
+The trigger `patch-miz` adds is safe to ship: where its folder is missing, which is every machine
+but this one, the mission only logs a line. A bare `dofile` is not: it raises a script error
+there.
+
+Before a `.miz` leaves this machine, empty the path, so the shared file carries no local folder:
+
+```bash
+python <skill>/scripts/hotload-setup.py boot-path <mission>.miz --clear
+python <skill>/scripts/hotload-setup.py boot-path <mission>.miz              # shows it
+python <skill>/scripts/hotload-setup.py boot-path <mission>.miz --set dcs-hotload
+```
+
+`--set` takes the folder holding `dcs-hotload.lua`, and gives the path back for testing here. A
+mission rebuilt by a build tool keeps the trigger as that tool keeps any other; clearing is then
+a step after each build that makes a copy to share.

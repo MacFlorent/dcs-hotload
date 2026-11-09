@@ -1,6 +1,6 @@
 # A boot trigger that stays quiet where hotload is not installed
 
-Status: in-progress
+Status: done
 
 Takes up two ideas: *Boot from a mission variable, and stop quietly without it* and *Set or clear
 the boot path of a built `.miz`*. The working templates are in
@@ -108,6 +108,6 @@ on the same point.
    header of `dcs-hotload.lua`. **Needs an in-game check**: a boot through `loadfile` with
    `Hotload.root` set; a cleared path; an unlocked install without the folder; a stock install.
 2. `boot-path`.
-3. The guidance in `setup.md`, unless it rode with 2.
+3. The guidance in `setup.md`: rode with 2.
 
 ## Comments

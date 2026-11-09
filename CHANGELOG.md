@@ -5,16 +5,20 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
 
 ## [Unreleased]
 
+- **Setup reads a `.miz` built by VEAF Mission Creation Tools**: `status --miz` and `patch-miz`
+  failed with `expected '['` on a mission written with bare keys (`coalition = {`), as VEAF MCT
+  6.36 writes it. They now read any of the layouts these missions come in, and `patch-miz` writes
+  the mission back in the layout it read, so only the added trigger changes.
 - **A boot trigger that stays quiet where hotload is not installed**: the setup step in the README
   and `patch-miz` now give a MISSION START trigger that sets `BASE_HOTLOAD_PATH`, then loads
   `dcs-hotload.lua` from it. Where the folder is missing, as on a player's machine, the mission
   logs one `HOTLOAD: not booted:` line and shows nothing; a bare `dofile` raised a script error
   there. A mission booting with a bare `dofile` keeps it: `status` and `patch-miz` say so, and
   removing it before running `patch-miz` gives the new trigger.
-- **Setup reads a `.miz` built by VEAF Mission Creation Tools**: `status --miz` and `patch-miz`
-  failed with `expected '['` on a mission written with bare keys (`coalition = {`), as VEAF MCT
-  6.36 writes it. They now read any of the layouts these missions come in, and `patch-miz` writes
-  the mission back in the layout it read, so only the added trigger changes.
+- **`boot-path` shows, sets or empties the folder a mission boots hotload from**:
+  `hotload-setup.py boot-path FILE --clear` before sharing a `.miz`, so the copy carries no local
+  folder and only logs where it starts; `--set DIR` gives it back. It changes both copies DCS
+  keeps of the trigger text, and refuses a mission where it does not find exactly one.
 
 ## [3.0.0] — 2026-11-02
 
