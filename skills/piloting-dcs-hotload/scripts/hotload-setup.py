@@ -19,10 +19,11 @@ Scripts/MissionScripting.lua: nothing guesses it.
 Exit codes: 0 done or nothing to do, 1 failed or refused, 2 a decision is needed (rerun with the
 flag the message names, once the user agrees), 3 usage.
 
-A .miz is a zip of Lua tables written by the Mission Editor. The `mission` table is read and
-written here without Lua: the writer follows the style of the file it read (tabs or four spaces,
-`{}` or an open pair for an empty table), so a table it does not change comes back as the same
-text, and numbers are kept as they were written.
+A .miz is a zip of Lua tables, written by the Mission Editor or by a build tool such as VEAF
+Mission Creation Tools. The `mission` table is read and written here without Lua: the writer
+follows the layout of the file it read (indent, line ending, `["key"]` or bare `key`, where a
+table opens and how it closes, `{}` or an open pair for an empty table), so a table it does not
+change comes back as the same text, and numbers are kept as they were written.
 """
 import argparse
 import os
@@ -44,7 +45,7 @@ def say(message):
     print(f"hotload-setup: {message}")
 
 
-# ── The Mission Editor's Lua table format ───────────────────────────────────────────────────────
+# ── The Lua table format of a .miz ──────────────────────────────────────────────────────────────
 
 class FormatError(Exception):
     pass
@@ -55,27 +56,49 @@ class Num(str):
 
 
 class Style:
-    """How a file is laid out: the indent unit, and whether an empty table is written `{}`."""
+    """How a file is laid out. The Mission Editor's layout is the default:
+    indent        the indent unit
+    compact_empty an empty table is written `{}`, not as an open pair
+    bare_keys     a key that is a Lua name is written `key =`, not `["key"] =`
+    inline_open   a table opens on its key's line, `key = {`, not on the next
+    end_comments  a table closes with `}, -- end of <key>`
+    head          what follows `<name> =` up to the outer table's `{`
+    tail          what follows the outer table's `}`; None for ` -- end of <name>` and a newline
+    newline       the line ending
+    """
 
-    def __init__(self, indent, compact_empty):
-        self.indent, self.compact_empty = indent, compact_empty
+    def __init__(self, indent, compact_empty, bare_keys=False, inline_open=False, end_comments=True,
+                 head=" \n", tail=None, newline="\n"):
+        self.indent, self.compact_empty, self.bare_keys = indent, compact_empty, bare_keys
+        self.inline_open, self.end_comments = inline_open, end_comments
+        self.head, self.tail, self.newline = head, tail, newline
 
     @classmethod
     def of(cls, text):
-        m = re.search(r"\n([ \t]+)\S", text)
-        indent = m.group(1) if m else "\t"
+        newline = "\r\n" if "\r\n" in text else "\n"
+        text = text.replace("\r\n", "\n")
+        top = re.match(r"\s*\w+ =([ \t]*\n?[ \t]*)\{\n([ \t]+)(\[?)", text)
+        head, indent, bracket = top.groups() if top else (" \n", "\t", "[")
+        nested = re.search(r"\n[ \t]+(?:\[[^\]\n]+\]|\w+) =( \{|[ \t]*\n[ \t]*\{)\n", text)
+        inline_open = bool(nested) and nested.group(1) == " {"
+        end_comments = bool(re.search(r"\}, -- end of ", text))
         if re.search(r"= \{\},", text):
             compact = True
-        elif re.search(r"= \n[ \t]*\{\n[ \t]*\}, -- end of", text):
+        elif re.search(r"=[ \t]*\n?[ \t]*\{\n[ \t]*\},", text):
             compact = False
         else:
-            compact = indent == "\t"
-        return cls(indent, compact)
+            compact = indent == "\t" or not end_comments
+        m = re.search(r"\}([^}]*)\Z", text)
+        tail = m.group(1) if m else None
+        return cls(indent, compact, bracket != "[", inline_open, end_comments, head, tail, newline)
 
 
 ESCAPES = {"n": "\n", "r": "\r", "t": "\t", "a": "\a", "b": "\b", "f": "\f", "v": "\v",
            "\\": "\\", '"': '"', "'": "'", "\n": "\n"}
 NUMBER = re.compile(r"-?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?")
+NAME = re.compile(r"[A-Za-z_]\w*\Z", re.A)
+KEYWORDS = frozenset("and break do else elseif end false for function if in local nil not or repeat "
+                     "return then true until while".split())
 
 
 class Parser:
@@ -108,7 +131,7 @@ class Parser:
 
     def name(self):
         self.skip()
-        m = re.compile(r"[A-Za-z_]\w*").match(self.text, self.pos)
+        m = re.compile(r"[A-Za-z_]\w*", re.A).match(self.text, self.pos)
         if not m:
             self.fail("expected a name")
         self.pos = m.end()
@@ -127,7 +150,10 @@ class Parser:
                 return "".join(out)
             if c == "\\":
                 e = self.text[self.pos + 1:self.pos + 2]
-                if e in ESCAPES:
+                if self.text.startswith("\r\n", self.pos + 1):
+                    out.append("\n")
+                    self.pos += 3
+                elif e in ESCAPES:
                     out.append(ESCAPES[e])
                     self.pos += 2
                 elif e.isdigit():
@@ -165,17 +191,22 @@ class Parser:
         self.expect("{")
         table = {}
         while self.peek() != "}":
-            self.expect("[")
-            c = self.peek()
-            if c in "\"'":
-                key = self.string()
+            if self.peek() != "[":
+                key = self.name()
+                if key in KEYWORDS:
+                    self.fail(f"expected a key, found {key!r}")
             else:
-                m = re.compile(r"-?\d+").match(self.text, self.pos)
-                if not m:
-                    self.fail("expected a string or integer key")
-                self.pos = m.end()
-                key = int(m.group())
-            self.expect("]")
+                self.pos += 1
+                c = self.peek()
+                if c in "\"'":
+                    key = self.string()
+                else:
+                    m = re.compile(r"-?\d+").match(self.text, self.pos)
+                    if not m:
+                        self.fail("expected a string or integer key")
+                    self.pos = m.end()
+                    key = int(m.group())
+                self.expect("]")
             self.expect("=")
             table[key] = self.value()
             if self.peek() == ",":
@@ -204,8 +235,12 @@ def lua_quote(s):
                   .replace("\r", "\\r").replace("\0", "\\000")) + '"'
 
 
-def lua_key(key):
-    return f"[{key}]" if isinstance(key, int) else f"[{lua_quote(key)}]"
+def lua_key(key, bare=False):
+    if isinstance(key, int):
+        return f"[{key}]"
+    if bare and NAME.match(key) and key not in KEYWORDS:
+        return key
+    return f"[{lua_quote(key)}]"
 
 
 def lua_scalar(value):
@@ -221,25 +256,26 @@ def lua_scalar(value):
 
 
 def lua_dump(name, value, style):
-    """Writes `name = { ... }` the way the Mission Editor does, in the given style."""
-    out = [f"{name} = \n{{\n"]
+    """Writes `name = { ... }` in the given style."""
+    out = [f"{name} ={style.head}{{\n"]
 
     def entries(table, depth):
         pad = style.indent * depth
         for key, v in table.items():
-            k = lua_key(key)
+            k = lua_key(key, style.bare_keys)
             if not isinstance(v, dict):
                 out.append(f"{pad}{k} = {lua_scalar(v)},\n")
             elif not v and style.compact_empty:
                 out.append(f"{pad}{k} = {{}},\n")
             else:
-                out.append(f"{pad}{k} = \n{pad}{{\n")
+                out.append(f"{pad}{k} = {{\n" if style.inline_open else f"{pad}{k} = \n{pad}{{\n")
                 entries(v, depth + 1)
-                out.append(f"{pad}}}, -- end of {k}\n")
+                out.append(f"{pad}}}, -- end of {k}\n" if style.end_comments else f"{pad}}},\n")
 
     entries(value, 1)
-    out.append(f"}} -- end of {name}\n")
-    return "".join(out)
+    out.append("}" + (f" -- end of {name}\n" if style.tail is None else style.tail))
+    text = "".join(out)
+    return text if style.newline == "\n" else text.replace("\n", style.newline)
 
 
 # ── A .miz ──────────────────────────────────────────────────────────────────────────────────────
