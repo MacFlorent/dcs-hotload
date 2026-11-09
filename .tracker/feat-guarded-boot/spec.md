@@ -1,6 +1,6 @@
 # A boot trigger that stays quiet where hotload is not installed
 
-Status: in-progress
+Status: done
 
 Takes up two ideas: *Boot from a mission variable, and stop quietly without it* and *Set or clear
 the boot path of a built `.miz`*. The working templates are in
@@ -72,11 +72,11 @@ compiled `trig.actions` string (what DCS runs). Both change, and the command ref
 where it does not find exactly one assignment in each. `--set` refuses a folder without
 `dcs-hotload.lua`. The rewrite is atomic and keeps every other zip entry byte for byte.
 
-### 3. Guidance: handing a mission to players
+### 3. Guidance: sharing a mission
 
-The skill's `setup.md` says what is safe to ship: the guarded trigger is; a bare `dofile` is not.
-It says to clear the path when a mission leaves the developer's machine. The README gets one line
-on the same point.
+The skill's `setup.md`, under *Sharing the mission*, says what is safe to share: the guarded
+trigger is; a bare `dofile` is not. It gives clearing the path in a shared copy as good practice,
+not as a requirement. The README gets one line on the same point.
 
 ## Decisions
 
@@ -108,6 +108,6 @@ on the same point.
    header of `dcs-hotload.lua`. **Needs an in-game check**: a boot through `loadfile` with
    `Hotload.root` set; a cleared path; an unlocked install without the folder; a stock install.
 2. `boot-path`.
-3. The guidance in `setup.md`, unless it rode with 2.
+3. The guidance in `setup.md`: rode with 2.
 
 ## Comments

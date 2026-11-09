@@ -397,6 +397,131 @@ class BootLine(Scratch):
         self.assertIn("bare dofile", out.getvalue())
 
 
+# ── Showing, setting or clearing the boot path ──────────────────────────────────────────────────
+
+class BootPath(Scratch):
+    def setUp(self):
+        super().setUp()
+        self.miz = self.dir / "m.miz"
+        shutil.copy(FIXTURE, self.miz)
+        self.old = r"C:\old\dcs-hotload"
+        miz = setup.Miz.read(self.miz)
+        setup.add_boot(miz, self.old)
+        miz.write(self.miz)
+        self.target = self.dir / "here" / "dcs-hotload"
+        self.target.mkdir(parents=True)
+        (self.target / "dcs-hotload.lua").write_text("-- hotload\n", encoding="utf-8")
+
+    def run_cmd(self, *args):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = setup.main(["boot-path", str(self.miz), *args])
+        return code, out.getvalue()
+
+    def path_texts(self):
+        """The assignment as the editor shows it, and the compiled trigger DCS runs."""
+        mission = setup.Miz.read(self.miz).mission
+        return mission["trigrules"][1]["actions"][1]["text"], mission["trig"]["actions"][1]
+
+    def test_shows_the_folder(self):
+        code, out = self.run_cmd()
+        self.assertEqual(code, setup.OK)
+        self.assertIn(self.old, out)
+
+    def test_shows_a_cleared_path(self):
+        self.run_cmd("--clear")
+        code, out = self.run_cmd()
+        self.assertEqual(code, setup.OK)
+        self.assertIn("cleared", out)
+
+    def test_clear_empties_both_copies_and_keeps_every_other_entry(self):
+        before = miz_entries(self.miz)
+        self.assertEqual(self.run_cmd("--clear")[0], setup.OK)
+        shown, compiled = self.path_texts()
+        self.assertEqual(shown, "BASE_HOTLOAD_PATH = [[]]")
+        self.assertIn(setup.lua_quote("BASE_HOTLOAD_PATH = [[]]"), compiled)
+        self.assertNotIn("old", compiled)
+        self.assertIn(setup.lua_quote(setup.BOOT_GUARD), compiled)
+        after = miz_entries(self.miz)
+        self.assertEqual(list(after), list(before))
+        for name in before:
+            if name != "mission":
+                self.assertEqual(after[name], before[name], name)
+
+    def test_clearing_a_cleared_path_writes_nothing(self):
+        self.run_cmd("--clear")
+        before = self.miz.read_bytes()
+        code, out = self.run_cmd("--clear")
+        self.assertEqual(code, setup.OK)
+        self.assertEqual(self.miz.read_bytes(), before)
+        self.assertIn("already", out)
+
+    def test_set_writes_the_absolute_folder(self):
+        cwd = os.getcwd()
+        os.chdir(self.dir)
+        self.addCleanup(os.chdir, cwd)
+        self.assertEqual(self.run_cmd("--set", "here/dcs-hotload")[0], setup.OK)
+        found = setup.find_boot(setup.Miz.read(self.miz))
+        self.assertEqual(len(found), 1)
+        self.assertTrue(setup.same_path(found[0].path, str(self.target.resolve() / "dcs-hotload.lua")))
+        shown, compiled = self.path_texts()
+        self.assertIn(setup.lua_quote(shown), compiled)
+
+    def test_setting_the_same_folder_spelled_otherwise_writes_nothing(self):
+        miz = setup.Miz.read(FIXTURE)
+        setup.add_boot(miz, self.target.resolve().as_posix() + "/")    # as a mission may hold it
+        miz.write(self.miz)
+        before = self.miz.read_bytes()
+        code, out = self.run_cmd("--set", str(self.target))
+        self.assertEqual(code, setup.OK)
+        self.assertEqual(self.miz.read_bytes(), before)
+        self.assertIn("already", out)
+
+    def test_set_refuses_a_folder_without_hotload(self):
+        before = self.miz.read_bytes()
+        code, out = self.run_cmd("--set", str(self.dir))
+        self.assertEqual(code, setup.FAIL)
+        self.assertIn("no dcs-hotload.lua", out)
+        self.assertEqual(self.miz.read_bytes(), before)
+
+    def test_refuses_a_mission_without_the_trigger(self):
+        shutil.copy(FIXTURE, self.miz)
+        code, out = self.run_cmd("--clear")
+        self.assertEqual(code, setup.FAIL)
+        self.assertIn("patch-miz", out)
+
+    def test_refuses_an_unguarded_boot(self):
+        miz = setup.Miz.read(FIXTURE)
+        miz.entries["l10n/DEFAULT/boot.lua"] = b"dofile([[C:\\old\\dcs-hotload\\dcs-hotload.lua]])\n"
+        miz.write(self.miz)
+        before = self.miz.read_bytes()
+        code, out = self.run_cmd("--clear")
+        self.assertEqual(code, setup.FAIL)
+        self.assertIn("bare dofile", out)
+        self.assertEqual(self.miz.read_bytes(), before)
+
+    def test_refuses_two_assignments(self):
+        miz = setup.Miz.read(self.miz)
+        setup.add_boot(miz, r"C:\other\dcs-hotload")
+        miz.write(self.miz)
+        before = self.miz.read_bytes()
+        code, out = self.run_cmd("--clear")
+        self.assertEqual(code, setup.FAIL)
+        self.assertIn("2", out)
+        self.assertEqual(self.miz.read_bytes(), before)
+
+    def test_refuses_a_compiled_trigger_that_does_not_match(self):
+        miz = setup.Miz.read(self.miz)
+        miz.mission["trig"]["actions"][1] = 'a_do_script("something else");'
+        miz.write(self.miz)
+        before = self.miz.read_bytes()
+        self.assertEqual(self.run_cmd("--clear")[0], setup.FAIL)
+        self.assertEqual(self.miz.read_bytes(), before)
+
+    def test_set_and_clear_together_is_a_usage_error(self):
+        self.assertEqual(self.run_cmd("--set", str(self.target), "--clear")[0], setup.USAGE)
+
+
 # ── Deploying the tool into a mission folder ────────────────────────────────────────────────────
 
 class Deploy(Scratch):
