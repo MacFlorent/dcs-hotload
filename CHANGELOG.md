@@ -5,6 +5,8 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
 
 ## [Unreleased]
 
+## [3.0.1] — 2026-11-09
+
 - **Setup reads a `.miz` built by VEAF Mission Creation Tools**: `status --miz` and `patch-miz`
   failed with `expected '['` on a mission written with bare keys (`coalition = {`), as VEAF MCT
   6.36 writes it. They now read any of the layouts these missions come in, and `patch-miz` writes
