@@ -72,11 +72,11 @@ compiled `trig.actions` string (what DCS runs). Both change, and the command ref
 where it does not find exactly one assignment in each. `--set` refuses a folder without
 `dcs-hotload.lua`. The rewrite is atomic and keeps every other zip entry byte for byte.
 
-### 3. Guidance: handing a mission to players
+### 3. Guidance: sharing a mission
 
-The skill's `setup.md` says what is safe to ship: the guarded trigger is; a bare `dofile` is not.
-It says to clear the path when a mission leaves the developer's machine. The README gets one line
-on the same point.
+The skill's `setup.md`, under *Sharing the mission*, says what is safe to share: the guarded
+trigger is; a bare `dofile` is not. It gives clearing the path in a shared copy as good practice,
+not as a requirement. The README gets one line on the same point.
 
 ## Decisions
 

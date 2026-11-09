@@ -16,8 +16,8 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
   there. A mission booting with a bare `dofile` keeps it: `status` and `patch-miz` say so, and
   removing it before running `patch-miz` gives the new trigger.
 - **`boot-path` shows, sets or empties the folder a mission boots hotload from**:
-  `hotload-setup.py boot-path FILE --clear` before sharing a `.miz`, so the copy carries no local
-  folder and only logs where it starts; `--set DIR` gives it back. It changes both copies DCS
+  `hotload-setup.py boot-path FILE --clear` empties it in a copy you share, so the file names no
+  local folder; `--set DIR` gives it back. It changes both copies DCS
   keeps of the trigger text, and refuses a mission where it does not find exactly one.
 
 ## [3.0.0] — 2026-11-02
