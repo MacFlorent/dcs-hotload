@@ -14,6 +14,11 @@
       dcs-hotload.lua from it when it is there (boot-guard.lua, next to this script), keeping the
       original as FILE.bak. A boot pointing at another folder, or cleared, is rewritten only with
       --retarget.
+  python hotload-setup.py boot-path FILE [--set DIR | --clear]
+      Show the folder BASE_HOTLOAD_PATH names in the trigger patch-miz writes, write another
+      folder (one holding dcs-hotload.lua), or empty it, so the mission only logs where it starts.
+      Run --clear on a copy that leaves this machine. Refuses a mission without exactly one
+      BASE_HOTLOAD_PATH assignment, or whose compiled trigger does not hold it once.
 
 DIR defaults to the current folder. DCS is the DCS World folder, the one holding
 Scripts/MissionScripting.lua: nothing guesses it.
@@ -599,6 +604,41 @@ def patch_miz(miz_path, mission, retarget):
     return OK
 
 
+def boot_path(miz_path, set_dir, clear):
+    miz = Miz.read(miz_path)
+    found = find_boot(miz)
+    guarded = [b for b in found if b.guarded]
+    if not guarded:
+        for boot in found:
+            say(unguarded_note(boot))
+        say(f"{miz_path.name} has no BASE_HOTLOAD_PATH" + ("" if found else ": run patch-miz"))
+        return FAIL
+    if len(guarded) > 1:
+        say(f"{miz_path.name} sets BASE_HOTLOAD_PATH {len(guarded)} times ("
+            + ", ".join(b.where for b in guarded) + "): keep one")
+        return FAIL
+    boot = guarded[0]
+    current = boot.path[:-len(LUA_NAME)].rstrip("\\/") if boot.path else ""
+    if set_dir is None and not clear:
+        say(f"{miz_path.name}: BASE_HOTLOAD_PATH " + (f"= {current}" if current else "is cleared")
+            + f" ({boot.where})")
+        return OK
+    folder = ""
+    if not clear:
+        folder = str(Path(set_dir).resolve())
+        if not (Path(folder) / LUA_NAME).is_file():
+            say(f"no dcs-hotload.lua in {folder}")
+            return FAIL
+    if current == folder or same_path(current, folder):
+        say(f"{miz_path.name}: BASE_HOTLOAD_PATH is already " + (folder or "cleared"))
+        return OK
+    retarget_boot(miz, boot, folder)
+    miz.write(miz_path)
+    say(f"{miz_path.name}: BASE_HOTLOAD_PATH " + (f"= {folder}" if folder else "cleared")
+        + ("" if folder else ": the mission only logs where it starts"))
+    return OK
+
+
 def status(mission, dcs_arg, miz_arg):
     ready = True
     lua = mission / "dcs-hotload" / "dcs-hotload.lua"
@@ -658,6 +698,11 @@ def main(argv=None):
     m.add_argument("miz")
     m.add_argument("--mission", default=".")
     m.add_argument("--retarget", action="store_true")
+    b = sub.add_parser("boot-path")
+    b.add_argument("miz")
+    change = b.add_mutually_exclusive_group()
+    change.add_argument("--set", metavar="DIR")
+    change.add_argument("--clear", action="store_true")
     try:
         args = p.parse_args(argv)
     except SystemExit as e:
@@ -670,6 +715,8 @@ def main(argv=None):
             return deploy(Path(args.mission), args.update)
         if args.cmd == "unlock":
             return unlock(args.dcs, args.yes)
+        if args.cmd == "boot-path":
+            return boot_path(Path(args.miz), args.set, args.clear)
         return patch_miz(Path(args.miz), Path(args.mission), args.retarget)
     except (FormatError, zipfile.BadZipFile, KeyError) as e:
         say(f"cannot read the mission: {e}")
