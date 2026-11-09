@@ -49,16 +49,6 @@ post-build hook, so the mission's `build.py` runs `veaf-tools.exe mission build`
 each `.miz` the build wrote (new or changed since a snapshot taken before it; a timestamp threshold
 also caught a `.miz` the previous run's `clear` had just rewritten), unless `--hotload`.
 
-## Read a `mission` table in any key style
-
-`hotload-setup.py` reads a `.miz`'s `mission` only in the Mission Editor's style
-(`["coalition"] = {`) and fails on any other valid Lua table: `cannot read the mission: line 3:
-expected '['` on every `.miz` built by VEAF MCT 6.36.0, which writes bare keys
-(`coalition = {`), a different layout and indentation, and keeps the same content (checked on
-IADS-Caucasus Mk2: the tables are equal outside the triggers). `status --miz` and `patch-miz`
-are unusable on those missions. Accept bare identifier keys; keep writing in the style of the
-file read, as the help already says.
-
 ## Known rough edges
 
 - A command name whose outbox could not be written stays blocked until the mission restarts, and

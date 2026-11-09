@@ -5,6 +5,11 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
 
 ## [Unreleased]
 
+- **Setup reads a `.miz` built by VEAF Mission Creation Tools**: `status --miz` and `patch-miz`
+  failed with `expected '['` on a mission written with bare keys (`coalition = {`), as VEAF MCT
+  6.36 writes it. They now read any of the layouts these missions come in, and `patch-miz` writes
+  the mission back in the layout it read, so only the added trigger changes.
+
 ## [3.0.0] — 2026-11-02
 
 - **A heartbeat for drivers**: while the mailbox is on, `user-outbox/_heartbeat.lua` holds the
