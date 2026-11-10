@@ -37,6 +37,24 @@ class Scratch(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
 
 
+class Mission(Scratch):
+    """<dir>/m.miz and <dir>/dcs-hotload/dcs-hotload.lua, version 9.9.9."""
+    def setUp(self):
+        super().setUp()
+        shutil.copy(FIXTURE, self.dir / "m.miz")
+        self.miz = self.dir / "m.miz"
+        self.copy = self.dir / "dcs-hotload"
+        self.copy.mkdir()
+        (self.copy / "dcs-hotload.lua").write_text('Hotload.version = "9.9.9"\n', encoding="utf-8")
+
+    def run_main(self, *args):
+        """main() on this mission's copy, with both streams captured: (code, stdout, stderr)."""
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = setup.main(list(args), copy=self.copy)
+        return code, out.getvalue(), err.getvalue()
+
+
 # ── The Mission Editor's Lua table format ───────────────────────────────────────────────────────
 
 SPACES = '''mission =
@@ -193,11 +211,9 @@ class DcsMissions(unittest.TestCase):
 
 # ── The boot line in a .miz ─────────────────────────────────────────────────────────────────────
 
-class BootLine(Scratch):
+class BootLine(Mission):
     def setUp(self):
         super().setUp()
-        self.miz = self.dir / "m.miz"
-        shutil.copy(FIXTURE, self.miz)
         self.folder = r"D:\Missions\M\dcs-hotload"
         self.lua = self.folder + r"\dcs-hotload.lua"
 
@@ -333,23 +349,24 @@ class BootLine(Scratch):
         self.assertFalse(setup.same_path("", r"D:\Missions\N\dcs-hotload.lua"))
 
     def test_patch_command(self):
-        mission_dir = self.dir
-        shutil.copy(FIXTURE, mission_dir / "m.miz")
-        lua = mission_dir / "dcs-hotload" / "dcs-hotload.lua"
+        lua = self.copy / "dcs-hotload.lua"
 
-        self.assertEqual(setup.main(["patch-miz", str(mission_dir / "m.miz"), "--mission", str(mission_dir)]),
-                         setup.OK)
-        self.assertTrue((mission_dir / "m.miz.bak").exists())
-        found = setup.find_boot(setup.Miz.read(mission_dir / "m.miz"))
+        self.assertEqual(setup.main(["patch-miz"], copy=self.copy), setup.OK)
+        self.assertTrue((self.dir / "m.miz.bak").exists())
+        found = setup.find_boot(setup.Miz.read(self.miz))
         self.assertEqual(len(found), 1)
         self.assertTrue(found[0].guarded)
         self.assertTrue(setup.same_path(found[0].path, str(lua)))
 
         # Again: nothing to do.
-        before = (mission_dir / "m.miz").read_bytes()
-        self.assertEqual(setup.main(["patch-miz", str(mission_dir / "m.miz"), "--mission", str(mission_dir)]),
-                         setup.OK)
-        self.assertEqual((mission_dir / "m.miz").read_bytes(), before)
+        before = self.miz.read_bytes()
+        self.assertEqual(setup.main(["patch-miz"], copy=self.copy), setup.OK)
+        self.assertEqual(self.miz.read_bytes(), before)
+
+    def test_patch_points_at_the_copy_it_runs_from(self):
+        self.assertEqual(setup.main(["patch-miz"], copy=self.copy), setup.OK)
+        self.assertTrue(setup.same_path(setup.find_boot(setup.Miz.read(self.miz))[0].path,
+                                        str(self.copy.resolve() / "dcs-hotload.lua")))
 
     def test_patch_keeps_the_layout_of_a_bare_key_mission(self):
         entries = miz_entries(FIXTURE)
@@ -359,7 +376,7 @@ class BootLine(Scratch):
             for name, data in entries.items():
                 z.writestr(name, bare.encode("utf-8") if name == "mission" else data)
 
-        self.assertEqual(setup.main(["patch-miz", str(self.miz), "--mission", str(self.dir)]), setup.OK)
+        self.assertEqual(setup.main(["patch-miz"], copy=self.copy), setup.OK)
         text = miz_entries(self.miz)["mission"].decode("utf-8")
         self.assertIn("\n  trigrules = {\n    [1] = {\n", text)
         self.assertNotIn('["', text.split("trigrules", 1)[0])
@@ -369,41 +386,81 @@ class BootLine(Scratch):
         miz = setup.Miz.read(self.miz)
         setup.add_boot(miz, r"C:\old\dcs-hotload")
         miz.write(self.miz)
-        args = ["patch-miz", str(self.miz), "--mission", str(self.dir)]
-        self.assertEqual(setup.main(args), setup.DECIDE)
-        self.assertEqual(setup.main(args + ["--retarget"]), setup.OK)
+        code, out, err = self.run_main("patch-miz")
+        self.assertEqual(code, setup.DECIDE)
+        self.assertIn("--retarget", err)
+        self.assertNotIn("the user", out + err)    # temp paths hold "Users", hence the lower case
+        self.assertEqual(self.run_main("patch-miz", "--retarget")[0], setup.OK)
         self.assertTrue(setup.same_path(setup.find_boot(setup.Miz.read(self.miz))[0].path,
-                                        str(self.dir / "dcs-hotload" / "dcs-hotload.lua")))
+                                        str(self.copy / "dcs-hotload.lua")))
 
     def test_patch_command_asks_before_setting_a_cleared_path(self):
         miz = setup.Miz.read(self.miz)
         setup.add_boot(miz, "")
         miz.write(self.miz)
-        args = ["patch-miz", str(self.miz), "--mission", str(self.dir)]
-        self.assertEqual(setup.main(args), setup.DECIDE)
-        self.assertEqual(setup.main(args + ["--retarget"]), setup.OK)
+        self.assertEqual(self.run_main("patch-miz")[0], setup.DECIDE)
+        self.assertEqual(self.run_main("patch-miz", "--retarget")[0], setup.OK)
         self.assertTrue(setup.same_path(setup.find_boot(setup.Miz.read(self.miz))[0].path,
-                                        str(self.dir / "dcs-hotload" / "dcs-hotload.lua")))
+                                        str(self.copy / "dcs-hotload.lua")))
 
     def test_patch_command_leaves_an_unguarded_boot_of_this_mission_alone(self):
-        lua = str((self.dir / "dcs-hotload" / "dcs-hotload.lua").resolve())
+        lua = str((self.copy / "dcs-hotload.lua").resolve())
         self.unguarded(lua).write(self.miz)
         before = self.miz.read_bytes()
-        out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            code = setup.main(["patch-miz", str(self.miz), "--mission", str(self.dir)])
+        code, out, err = self.run_main("patch-miz")
         self.assertEqual(code, setup.OK)
         self.assertEqual(self.miz.read_bytes(), before)
-        self.assertIn("bare dofile", out.getvalue())
+        self.assertIn("bare dofile", err)
+
+    def test_no_miz_next_to_the_copy_is_refused(self):
+        self.miz.unlink()
+        code, out, err = self.run_main("status")
+        self.assertEqual(code, setup.FAIL)
+        self.assertIn(str(self.dir), err)
+        self.assertIn("--miz", err)
+
+    def test_several_miz_need_miz(self):
+        shutil.copy(FIXTURE, self.dir / "n.miz")
+        code, out, err = self.run_main("status")
+        self.assertEqual(code, setup.FAIL)
+        self.assertIn("2 .miz files", err)
+        self.assertNotEqual(self.run_main("status", "--miz", str(self.miz))[0], setup.FAIL)
+
+    def test_a_leftover_temp_file_is_not_a_second_miz(self):
+        (self.dir / "tmpabc.miz.tmp").write_bytes(b"")
+        self.assertEqual(setup.main(["patch-miz"], copy=self.copy), setup.OK)
+
+    def test_the_writer_leaves_no_temp_file_a_miz_glob_would_match(self):
+        seen = []
+
+        def interrupted(src, dst):
+            seen.append(sorted(p.name for p in self.dir.glob("*.miz")))
+            raise KeyboardInterrupt
+
+        with mock.patch.object(setup.os, "replace", interrupted):
+            with self.assertRaises(KeyboardInterrupt):
+                setup.Miz.read(self.miz).write(self.miz)
+        self.assertEqual(seen, [["m.miz"]])
+
+    def test_a_relative_miz_resolves_from_the_current_folder(self):
+        elsewhere = self.dir / "elsewhere"
+        elsewhere.mkdir()
+        shutil.copy(FIXTURE, elsewhere / "other.miz")
+        cwd = os.getcwd()
+        os.chdir(elsewhere)
+        self.addCleanup(os.chdir, cwd)
+        self.assertEqual(setup.main(["patch-miz", "--miz", "other.miz"], copy=self.copy), setup.OK)
+        found = setup.find_boot(setup.Miz.read(elsewhere / "other.miz"))
+        self.assertEqual(len(found), 1)
+        self.assertTrue(setup.same_path(found[0].path, str(self.copy.resolve() / "dcs-hotload.lua")))
+        self.assertEqual(setup.find_boot(setup.Miz.read(self.miz)), [])
 
 
 # ── Showing, setting or clearing the boot path ──────────────────────────────────────────────────
 
-class BootPath(Scratch):
+class BootPath(Mission):
     def setUp(self):
         super().setUp()
-        self.miz = self.dir / "m.miz"
-        shutil.copy(FIXTURE, self.miz)
         self.old = r"C:\old\dcs-hotload"
         miz = setup.Miz.read(self.miz)
         setup.add_boot(miz, self.old)
@@ -413,10 +470,8 @@ class BootPath(Scratch):
         (self.target / "dcs-hotload.lua").write_text("-- hotload\n", encoding="utf-8")
 
     def run_cmd(self, *args):
-        out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            code = setup.main(["boot-path", str(self.miz), *args])
-        return code, out.getvalue()
+        code, out, err = self.run_main("boot-path", *args)
+        return code, out + err
 
     def path_texts(self):
         """The assignment as the editor shows it, and the compiled trigger DCS runs."""
@@ -654,36 +709,33 @@ class Unlock(Scratch):
 
 # ── status ──────────────────────────────────────────────────────────────────────────────────────
 
-class Status(Scratch):
+class Status(Mission):
     def setUp(self):
         super().setUp()
         self.dcs = self.dir / "dcs"
         (self.dcs / "Scripts" / "Database").mkdir(parents=True)
         (self.dcs / "Scripts" / "MissionScripting.lua").write_text(STOCK, encoding="utf-8")
-        self.mission = self.dir / "mission"
-        self.mission.mkdir()
-        shutil.copy(FIXTURE, self.mission / "m.miz")
-        self.args = ["status", "--mission", str(self.mission), "--dcs", str(self.dcs)]
+        self.args = ["status", "--dcs", str(self.dcs)]
 
     def test_reports_what_is_missing(self):
-        self.assertEqual(setup.main(self.args), setup.DECIDE)
+        self.assertEqual(self.run_main(*self.args)[0], setup.DECIDE)
+
+    def test_names_the_copy_and_its_version(self):
+        code, out, err = self.run_main(*self.args)
+        self.assertIn(f"dcs-hotload 9.9.9 in {self.copy}", out)
 
     def test_all_set(self):
-        setup.main(["deploy", "--mission", str(self.mission)])
         setup.main(["unlock", "--dcs", str(self.dcs), "--yes"])
-        setup.main(["patch-miz", str(self.mission / "m.miz"), "--mission", str(self.mission)])
-        self.assertEqual(setup.main(self.args), setup.OK)
+        setup.main(["patch-miz"], copy=self.copy)
+        self.assertEqual(self.run_main(*self.args)[0], setup.OK)
 
     def status_of(self, folder):
-        setup.main(["deploy", "--mission", str(self.mission)])
         setup.main(["unlock", "--dcs", str(self.dcs), "--yes"])
-        miz = setup.Miz.read(self.mission / "m.miz")
+        miz = setup.Miz.read(self.miz)
         setup.add_boot(miz, folder)
-        miz.write(self.mission / "m.miz")
-        out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            code = setup.main(self.args)
-        return code, out.getvalue()
+        miz.write(self.miz)
+        code, out, err = self.run_main(*self.args)
+        return code, out
 
     def test_a_cleared_path_is_not_set_up(self):
         code, out = self.status_of("")
@@ -691,24 +743,42 @@ class Status(Scratch):
         self.assertIn("boot path is cleared", out)
 
     def test_an_unguarded_boot_is_set_up_and_said_so(self):
-        setup.main(["deploy", "--mission", str(self.mission)])
         setup.main(["unlock", "--dcs", str(self.dcs), "--yes"])
-        lua = str((self.mission / "dcs-hotload" / "dcs-hotload.lua").resolve())
-        miz = setup.Miz.read(self.mission / "m.miz")
+        lua = str((self.copy / "dcs-hotload.lua").resolve())
+        miz = setup.Miz.read(self.miz)
         miz.entries["l10n/DEFAULT/boot.lua"] = f"dofile([[{lua}]])\n".encode("utf-8")
-        miz.write(self.mission / "m.miz")
-        out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            code = setup.main(self.args)
+        miz.write(self.miz)
+        code, out, err = self.run_main(*self.args)
         self.assertEqual(code, setup.OK)
-        self.assertIn("bare dofile", out.getvalue())
+        self.assertIn("bare dofile", out)
 
     def test_usage(self):
         self.assertEqual(setup.main(["nonsense"]), setup.USAGE)
 
-    def test_needs_the_install(self):
-        with mock.patch.dict(os.environ, {"DCS_INSTALL": str(self.dcs)}):
-            self.assertEqual(setup.main(["status", "--mission", str(self.mission)]), setup.USAGE)
+    def test_status_without_dcs_does_not_check_the_unlock(self):
+        setup.main(["patch-miz"], copy=self.copy)
+        code, out, err = self.run_main("status")
+        self.assertEqual(code, setup.OK)
+        self.assertIn("not checked (pass --dcs)", out)
+
+    def test_status_reports_the_mailbox_without_counting_it(self):
+        setup.main(["unlock", "--dcs", str(self.dcs), "--yes"])
+        setup.main(["patch-miz"], copy=self.copy)
+        code, out, err = self.run_main(*self.args)
+        self.assertEqual(code, setup.OK)
+        self.assertIn("mailbox off (user-inbox, user-outbox missing)", out)
+        (self.copy / "user-inbox").mkdir()
+        (self.copy / "user-outbox").mkdir()
+        self.assertIn("mailbox on", self.run_main(*self.args)[1])
+
+    def test_status_refuses_a_folder_that_is_not_an_install(self):
+        code, out, err = self.run_main("status", "--dcs", str(self.dir / "nowhere"))
+        self.assertEqual(code, setup.FAIL)
+        self.assertIn("not a DCS install", err)
+
+    def test_the_old_options_are_gone(self):
+        self.assertEqual(self.run_main("patch-miz", str(self.miz))[0], setup.USAGE)
+        self.assertEqual(self.run_main("patch-miz", "--mission", str(self.dir))[0], setup.USAGE)
 
 
 if __name__ == "__main__":

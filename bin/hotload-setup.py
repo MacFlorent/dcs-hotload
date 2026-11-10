@@ -1,30 +1,29 @@
 """hotload-setup.py -- set dcs-hotload up in a DCS mission folder. Python 3, standard library only.
 
-  python hotload-setup.py status    --dcs DCS [--mission DIR] [--miz FILE]
-      What the steps below would change. Exit 0 when hotload is fully set up, 2 when not.
-  python hotload-setup.py deploy    [--mission DIR] [--update]
-      Copy the tool into DIR/dcs-hotload/ (the release file set, .github/scripts/shipped.txt) and
-      create its user-* folders. An older copy is replaced only with --update; user-* folders are
-      never touched; a newer copy is left alone.
-  python hotload-setup.py unlock    --dcs DCS [--yes]
+  python dcs-hotload/bin/hotload-setup.py status    [--miz FILE] [--dcs DCS]
+      What the steps below would change: this copy's version, whether its mailbox is on, whether
+      the .miz boots this copy and, with --dcs, whether io and lfs are unlocked.
+  python dcs-hotload/bin/hotload-setup.py unlock    --dcs DCS [--yes]
       Comment out sanitizeModule('io') and ('lfs') in the install's Scripts/MissionScripting.lua,
       keeping the original as MissionScripting.lua.bak. Changes nothing without --yes.
-  python hotload-setup.py patch-miz FILE [--mission DIR] [--retarget]
-      Add a MISSION START trigger that sets BASE_HOTLOAD_PATH to DIR/dcs-hotload, then loads
+  python dcs-hotload/bin/hotload-setup.py patch-miz [--miz FILE] [--retarget]
+      Add a MISSION START trigger that sets BASE_HOTLOAD_PATH to this copy, then loads
       dcs-hotload.lua from it when it is there (boot-guard.lua, next to this script), keeping the
       original as FILE.bak. A boot pointing at another folder, or cleared, is rewritten only with
       --retarget.
-  python hotload-setup.py boot-path FILE [--set DIR | --clear]
+  python dcs-hotload/bin/hotload-setup.py boot-path [--miz FILE] [--set DIR | --clear]
       Show the folder BASE_HOTLOAD_PATH names in the trigger patch-miz writes, write another
       folder (one holding dcs-hotload.lua), or empty it, so the mission only logs where it starts.
       Run --clear on a copy that leaves this machine. Refuses a mission without exactly one
       BASE_HOTLOAD_PATH assignment, or whose compiled trigger does not hold it once.
 
-DIR defaults to the current folder. DCS is the DCS World folder, the one holding
-Scripts/MissionScripting.lua: nothing guesses it.
+The structure it assumes: <mission folder>/<mission>.miz, the only .miz, and
+<mission folder>/dcs-hotload/, the copy this script is in. --miz FILE names the .miz when there are
+several or none. DCS is the DCS World folder, the one holding Scripts/MissionScripting.lua: nothing
+guesses it.
 
 Exit codes: 0 done or nothing to do, 1 failed or refused, 2 a decision is needed (rerun with the
-flag the message names, once the user agrees), 3 usage.
+flag the message names), 3 usage.
 
 A .miz is a zip of Lua tables, written by the Mission Editor or by a build tool such as VEAF
 Mission Creation Tools. The `mission` table is read and written here without Lua: the writer
@@ -45,7 +44,7 @@ from pathlib import Path
 
 OK, FAIL, DECIDE, USAGE = 0, 1, 2, 3
 
-PLUGIN_ROOT = Path(__file__).resolve().parents[1]
+COPY = Path(__file__).resolve().parents[1]
 USER_FOLDERS = ("user-lib", "user-f10", "user-inbox", "user-outbox")
 
 
@@ -53,9 +52,17 @@ def say(message):
     print(f"hotload-setup: {message}")
 
 
+def warn(message):
+    print(f"hotload-setup: {message}", file=sys.stderr)
+
+
+class SetupError(Exception):
+    """A failure to report in one line, and exit FAIL."""
+
+
 # ── The Lua table format of a .miz ──────────────────────────────────────────────────────────────
 
-class FormatError(Exception):
+class FormatError(SetupError):
     pass
 
 
@@ -311,7 +318,7 @@ class Miz:
             raise FormatError("the written mission does not read back the same")
         self.entries["mission"] = text.encode("utf-8")
         path = Path(path)
-        fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".miz")
+        fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".miz.tmp")
         os.close(fd)
         try:
             with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as z:
@@ -461,7 +468,7 @@ def lua_version(lua):
 
 
 def plugin_version():
-    return lua_version(PLUGIN_ROOT / "dcs-hotload.lua")
+    return lua_version(COPY / "dcs-hotload.lua")
 
 
 def version_key(version):
@@ -469,7 +476,7 @@ def version_key(version):
 
 
 def shipped():
-    lines = (PLUGIN_ROOT / ".github" / "scripts" / "shipped.txt").read_text(encoding="utf-8").splitlines()
+    lines = (COPY / ".github" / "scripts" / "shipped.txt").read_text(encoding="utf-8").splitlines()
     return [line.strip() for line in lines if line.strip() and not line.startswith("#")]
 
 
@@ -526,16 +533,29 @@ def deploy(mission, update):
 def copy_shipped(target):
     target.mkdir(parents=True, exist_ok=True)
     for path in shipped():
-        src = PLUGIN_ROOT / path
+        src = COPY / path
         if src.is_dir():
             shutil.copytree(src, target / path)
         else:
             shutil.copy2(src, target / path)
 
 
+def find_miz(copy, miz_arg):
+    """The .miz to work on: --miz as given, else the only one next to the copy."""
+    if miz_arg:
+        return Path(miz_arg)
+    folder = copy.parent
+    found = sorted(p for p in folder.glob("*.miz") if p.is_file())
+    if not found:
+        raise SetupError(f"no .miz in {folder}: run from a mission's dcs-hotload/ copy, or pass --miz FILE")
+    if len(found) > 1:
+        raise SetupError(f"{len(found)} .miz files in {folder}: pass --miz FILE")
+    return found[0]
+
+
 def unlock(dcs_arg, yes):
     if not is_dcs(dcs_arg):
-        say(f"not a DCS install (no Scripts/MissionScripting.lua): {dcs_arg}")
+        warn(f"not a DCS install (no Scripts/MissionScripting.lua): {dcs_arg}")
         return FAIL
     dcs = Path(dcs_arg)
     file = dcs / "Scripts" / "MissionScripting.lua"
@@ -544,9 +564,9 @@ def unlock(dcs_arg, yes):
         say(f"{file} already leaves io and lfs to missions")
         return OK
     if not yes:
-        say(f"{file} removes {' and '.join(locked)} from missions; hotload needs both. The edit is "
-            "install-wide (every mission gets file access, multiplayer ones included), affects "
-            "multiplayer integrity checks, and DCS updates revert it. Rerun with --yes once the user agrees")
+        warn(f"{file} removes {' and '.join(locked)} from missions; hotload needs both. The edit is "
+             "install-wide (every mission gets file access, multiplayer ones included), affects "
+             "multiplayer integrity checks, and DCS updates revert it. Rerun with --yes to make this change")
         return DECIDE
     text = file.read_text(encoding="utf-8")
     try:
@@ -556,8 +576,8 @@ def unlock(dcs_arg, yes):
         with open(file, "w", encoding="utf-8", newline="") as f:
             f.write(LOCK.sub(r"\1--\2", text))
     except PermissionError:
-        say(f"no permission to write {file}: run as administrator, or comment out the "
-            "sanitizeModule('io') and ('lfs') lines by hand")
+        warn(f"no permission to write {file}: run as administrator, or comment out the "
+             "sanitizeModule('io') and ('lfs') lines by hand")
         return FAIL
     say(f"unlocked {' and '.join(locked)} in {file}")
     return OK
@@ -572,8 +592,8 @@ def what_it_loads(boot):
     return f"its boot path is cleared ({boot.where})" if not boot.path else f"loads {boot.path} ({boot.where})"
 
 
-def patch_miz(miz_path, mission, retarget):
-    folder = str((mission / "dcs-hotload").resolve())
+def patch_miz(miz_path, copy, retarget):
+    folder = str(copy.resolve())
     lua = lua_in(folder)
     miz = Miz.read(miz_path)
     found = find_boot(miz)
@@ -582,12 +602,12 @@ def patch_miz(miz_path, mission, retarget):
         say(f"{miz_path.name} already loads {lua}")
         for boot in here:
             if not boot.guarded:
-                say(unguarded_note(boot))
+                warn(unguarded_note(boot))
         return OK
     if found and not retarget:
         for boot in found:
-            say(f"{miz_path.name} {what_it_loads(boot)}, not {lua}")
-        say("rerun with --retarget to point it at this mission's copy, once the user agrees")
+            warn(f"{miz_path.name} {what_it_loads(boot)}, not {lua}")
+        warn("rerun with --retarget to point it at this copy")
         return DECIDE
     backup = miz_path.with_name(miz_path.name + ".bak")
     if not backup.exists():
@@ -610,12 +630,12 @@ def boot_path(miz_path, set_dir, clear):
     guarded = [b for b in found if b.guarded]
     if not guarded:
         for boot in found:
-            say(unguarded_note(boot))
-        say(f"{miz_path.name} has no BASE_HOTLOAD_PATH" + ("" if found else ": run patch-miz"))
+            warn(unguarded_note(boot))
+        warn(f"{miz_path.name} has no BASE_HOTLOAD_PATH" + ("" if found else ": run patch-miz"))
         return FAIL
     if len(guarded) > 1:
-        say(f"{miz_path.name} sets BASE_HOTLOAD_PATH {len(guarded)} times ("
-            + ", ".join(b.where for b in guarded) + "): keep one")
+        warn(f"{miz_path.name} sets BASE_HOTLOAD_PATH {len(guarded)} times ("
+             + ", ".join(b.where for b in guarded) + "): keep one")
         return FAIL
     boot = guarded[0]
     current = boot.path[:-len(LUA_NAME)].rstrip("\\/") if boot.path else ""
@@ -627,7 +647,7 @@ def boot_path(miz_path, set_dir, clear):
     if not clear:
         folder = str(Path(set_dir).resolve())
         if not (Path(folder) / LUA_NAME).is_file():
-            say(f"no dcs-hotload.lua in {folder}")
+            warn(f"no dcs-hotload.lua in {folder}")
             return FAIL
     if current == folder or same_path(current, folder):
         say(f"{miz_path.name}: BASE_HOTLOAD_PATH is already " + (folder or "cleared"))
@@ -639,55 +659,46 @@ def boot_path(miz_path, set_dir, clear):
     return OK
 
 
-def status(mission, dcs_arg, miz_arg):
-    ready = True
-    lua = mission / "dcs-hotload" / "dcs-hotload.lua"
-    if not lua.exists():
-        say(f"not deployed in {mission}: run deploy")
-        ready = False
-    else:
-        have, want = lua_version(lua), plugin_version()
-        say(f"deployed: {have}" + ("" if have == want else f" (the plugin has {want}: deploy --update)"))
-        missing = [f for f in ("user-inbox", "user-outbox") if not (lua.parent / f).is_dir()]
-        if missing:
-            say(f"mailbox off ({', '.join(missing)} missing): run deploy")
-            ready = False
+def status(copy, dcs_arg, miz_arg):
+    miz_path = find_miz(copy, miz_arg)
+    failed, ready = False, True
+    lua = copy / "dcs-hotload.lua"
+    say(f"dcs-hotload {lua_version(lua)} in {copy}")
+    missing = [f for f in ("user-inbox", "user-outbox") if not (copy / f).is_dir()]
+    say(f"mailbox off ({', '.join(missing)} missing)" if missing else "mailbox on")
 
-    if not is_dcs(dcs_arg):
-        say(f"not a DCS install (no Scripts/MissionScripting.lua): {dcs_arg}")
-        ready = False
+    if dcs_arg is None:
+        say("MissionScripting.lua: not checked (pass --dcs)")
+    elif not is_dcs(dcs_arg):
+        warn(f"not a DCS install (no Scripts/MissionScripting.lua): {dcs_arg}")
+        failed = True
     else:
         locked = locked_modules(Path(dcs_arg) / "Scripts" / "MissionScripting.lua")
         say("MissionScripting.lua: " + (f"{' and '.join(locked)} locked: run unlock" if locked else "unlocked"))
-        ready = ready and not locked
+        ready = not locked
 
-    mizs = [Path(miz_arg)] if miz_arg else sorted(mission.glob("*.miz"))
-    if len(mizs) != 1:
-        say(f"{len(mizs)} .miz files in {mission}: pass --miz")
-        return DECIDE
     expected = str(lua.resolve())
-    found = find_boot(Miz.read(mizs[0]))
+    found = find_boot(Miz.read(miz_path))
     here = [b for b in found if same_path(b.path, expected)]
     if here:
-        say(f"{mizs[0].name} loads this mission's dcs-hotload")
+        say(f"{miz_path.name} loads this copy")
         for boot in here:
             if not boot.guarded:
                 say(unguarded_note(boot))
     else:
-        say(f"{mizs[0].name} " + (f"{what_it_loads(found[0])} instead: patch-miz --retarget" if found
-                                   else "does not load dcs-hotload: run patch-miz"))
+        say(f"{miz_path.name} " + (f"{what_it_loads(found[0])} instead: patch-miz --retarget" if found
+                                    else "does not load dcs-hotload: run patch-miz"))
         ready = False
-    return OK if ready else DECIDE
+    return FAIL if failed else OK if ready else DECIDE
 
 
-def main(argv=None):
+def main(argv=None, copy=COPY):
     p = argparse.ArgumentParser(prog="hotload-setup.py", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("status")
-    s.add_argument("--mission", default=".")
-    s.add_argument("--dcs", required=True)
     s.add_argument("--miz")
+    s.add_argument("--dcs")
     d = sub.add_parser("deploy")
     d.add_argument("--mission", default=".")
     d.add_argument("--update", action="store_true")
@@ -695,11 +706,10 @@ def main(argv=None):
     u.add_argument("--dcs", required=True)
     u.add_argument("--yes", action="store_true")
     m = sub.add_parser("patch-miz")
-    m.add_argument("miz")
-    m.add_argument("--mission", default=".")
+    m.add_argument("--miz")
     m.add_argument("--retarget", action="store_true")
     b = sub.add_parser("boot-path")
-    b.add_argument("miz")
+    b.add_argument("--miz")
     change = b.add_mutually_exclusive_group()
     change.add_argument("--set", metavar="DIR")
     change.add_argument("--clear", action="store_true")
@@ -710,16 +720,16 @@ def main(argv=None):
 
     try:
         if args.cmd == "status":
-            return status(Path(args.mission), args.dcs, args.miz)
+            return status(copy, args.dcs, args.miz)
         if args.cmd == "deploy":
             return deploy(Path(args.mission), args.update)
         if args.cmd == "unlock":
             return unlock(args.dcs, args.yes)
         if args.cmd == "boot-path":
-            return boot_path(Path(args.miz), args.set, args.clear)
-        return patch_miz(Path(args.miz), Path(args.mission), args.retarget)
-    except (FormatError, zipfile.BadZipFile, KeyError) as e:
-        say(f"cannot read the mission: {e}")
+            return boot_path(find_miz(copy, args.miz), args.set, args.clear)
+        return patch_miz(find_miz(copy, args.miz), copy, args.retarget)
+    except (SetupError, zipfile.BadZipFile, KeyError) as e:
+        warn(f"cannot read the mission: {e}" if not isinstance(e, SetupError) else str(e))
         return FAIL
 
 
