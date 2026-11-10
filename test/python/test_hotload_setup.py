@@ -428,9 +428,26 @@ class BootLine(Mission):
         self.assertIn("2 .miz files", err)
         self.assertNotEqual(self.run_main("status", "--miz", str(self.miz))[0], setup.FAIL)
 
-    def test_a_leftover_temp_file_is_not_a_second_miz(self):
-        (self.dir / "tmpabc.miz.tmp").write_bytes(b"")
-        self.assertEqual(setup.main(["patch-miz"], copy=self.copy), setup.OK)
+    def test_a_linked_copy_works_on_the_mission_it_is_linked_into(self):
+        other = self.dir / "other"
+        other.mkdir()
+        shutil.copy(FIXTURE, other / "o.miz")
+        link = other / "dcs-hotload"
+        try:
+            os.symlink(self.copy, link, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            try:
+                import _winapi
+                _winapi.CreateJunction(str(self.copy), str(link))
+            except (ImportError, OSError):
+                self.skipTest("neither a symlink nor a junction can be made here")
+        copy = setup.copy_of(str(link / "bin" / "hotload-setup.py"))
+        self.assertEqual(copy, link)
+        before = self.miz.read_bytes()
+        self.assertEqual(setup.main(["patch-miz"], copy=copy), setup.OK)
+        found = setup.find_boot(setup.Miz.read(other / "o.miz"))
+        self.assertTrue(setup.same_path(found[0].path, str(link / "dcs-hotload.lua")))
+        self.assertEqual(self.miz.read_bytes(), before)
 
     def test_the_writer_leaves_no_temp_file_a_miz_glob_would_match(self):
         seen = []
@@ -518,10 +535,47 @@ class Errors(Mission):
                 self.run_main("status")
 
     def test_only_patch_miz_needs_the_guard(self):
+        miz = setup.Miz.read(self.miz)
+        setup.add_boot(miz, r"C:\old\dcs-hotload")
+        miz.write(self.miz)
+        dcs = self.dir / "dcs"
+        (dcs / "Scripts").mkdir(parents=True)
+        (dcs / "Scripts" / "MissionScripting.lua").write_text(STOCK, encoding="utf-8")
         with mock.patch.object(setup, "GUARD", self.dir / "no-guard" / "boot-guard.lua"):
             self.assertNotEqual(self.run_main("status")[0], setup.FAIL)
-            self.assertEqual(self.run_main("boot-path")[0], setup.FAIL)   # no trigger yet, not the guard
-            self.fails("patch-miz", mention="boot-guard.lua is missing")
+            self.assertEqual(self.run_main("boot-path")[0], setup.OK)
+            self.assertEqual(self.run_main("boot-path", "--clear")[0], setup.OK)
+            self.assertEqual(self.run_main("unlock", "--dcs", str(dcs), "--yes")[0], setup.OK)
+            fresh = self.dir / "fresh.miz"          # adding a trigger writes the guard; retargeting does not
+            shutil.copy(FIXTURE, fresh)
+            self.fails("patch-miz", "--miz", str(fresh), mention="boot-guard.lua is missing")
+
+    def test_a_miz_it_cannot_replace_reports_nothing_done(self):
+        denied = PermissionError(13, "Access is denied")
+        with mock.patch.object(setup.os, "replace", side_effect=denied):
+            code, out, err = self.run_main("patch-miz")
+        self.assertEqual(code, setup.FAIL)
+        self.assertEqual(out, "")
+        self.assertIn("m.miz", err)
+        self.assertIn("Access is denied", err)
+        self.assertNotIn(".tmp", err)
+
+    def test_a_copy_without_hotload_is_refused(self):
+        (self.copy / "dcs-hotload.lua").unlink()
+        before = self.miz.read_bytes()
+        for command in ("status", "patch-miz"):
+            self.fails(command, mention="holds no dcs-hotload.lua")
+        self.assertEqual(self.miz.read_bytes(), before)
+
+    def test_usage_errors_carry_the_prefix(self):
+        for args in (["nonsense"], [], ["patch-miz", "--bogus"]):
+            code, out, err = self.run_main(*args)
+            self.assertEqual(code, setup.USAGE, args)
+            self.assertEqual(out, "", args)
+            lines = [line for line in err.splitlines() if line]
+            self.assertTrue(lines, args)
+            for line in lines:
+                self.assertTrue(line.startswith("hotload-setup: "), (args, line))
 
     def test_help_is_usage(self):
         code, out, err = self.run_main("--help")
@@ -822,6 +876,17 @@ class Status(Mission):
         code, out, err = self.run_main("status", "--dcs", str(self.dir / "nowhere"))
         self.assertEqual(code, setup.FAIL)
         self.assertIn("not a DCS install", err)
+
+    def test_reports_every_boot_that_is_not_this_copy(self):
+        miz = setup.Miz.read(self.miz)
+        setup.add_boot(miz, r"C:\old\dcs-hotload")
+        miz.entries["l10n/DEFAULT/boot.lua"] = b"dofile([[D:\\elsewhere\\dcs-hotload.lua]])\n"
+        miz.write(self.miz)
+        code, out, err = self.run_main(*self.args)
+        self.assertEqual(code, setup.DECIDE)
+        self.assertIn(r"C:\old\dcs-hotload", out)
+        self.assertIn(r"D:\elsewhere\dcs-hotload.lua", out)
+        self.assertIn("bare dofile", out)
 
     def test_the_old_options_are_gone(self):
         self.assertEqual(self.run_main("patch-miz", str(self.miz))[0], setup.USAGE)

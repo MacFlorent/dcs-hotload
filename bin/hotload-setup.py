@@ -38,7 +38,13 @@ from pathlib import Path
 
 OK, FAIL, DECIDE, USAGE = 0, 1, 2, 3
 
-COPY = Path(__file__).resolve().parents[1]
+def copy_of(script):
+    """The copy a script in its bin/ belongs to. Not resolved: through a link or a junction, the
+    mission is the one the link is in, not the one its target is in."""
+    return Path(os.path.abspath(script)).parents[1]
+
+
+COPY = copy_of(__file__)
 
 
 def say(message):
@@ -58,6 +64,20 @@ def warn(message):
 
 class SetupError(Exception):
     """A failure to report in one line, and exit FAIL."""
+
+
+class Usage(Exception):
+    """A command line argparse refuses: reported in one line, and exit USAGE."""
+
+
+class ArgParser(argparse.ArgumentParser):
+    def error(self, message):
+        raise Usage(message)
+
+
+def check_copy(copy):
+    if not (copy / LUA_NAME).is_file():
+        raise SetupError(f"{copy} holds no {LUA_NAME}: run the copy in a mission's dcs-hotload/bin/")
 
 
 # ── The Lua table format of a .miz ──────────────────────────────────────────────────────────────
@@ -346,7 +366,10 @@ class Miz:
                     if name not in self.infos:
                         info.compress_type = zipfile.ZIP_DEFLATED
                     z.writestr(info, data)
-            os.replace(tmp, path)
+            try:
+                os.replace(tmp, path)
+            except OSError as e:
+                raise SetupError(f"cannot replace {path}: {e.strerror}") from None
         finally:
             if os.path.exists(tmp):
                 os.remove(tmp)
@@ -559,7 +582,8 @@ def what_it_loads(boot):
 
 
 def patch_miz(miz_path, copy, retarget):
-    folder = str(copy.resolve())
+    check_copy(copy)
+    folder = os.path.abspath(copy)
     lua = lua_in(folder)
     miz = Miz.read(miz_path)
     found = find_boot(miz)
@@ -581,11 +605,13 @@ def patch_miz(miz_path, copy, retarget):
     if found:
         for boot in found:
             retarget_boot(miz, boot, folder)
-            say(f"{boot.where}: now loads {lua}")
+        done = [f"{boot.where}: now loads {lua}" for boot in found]
     else:
         add_boot(miz, folder)
-        say(f"added a MISSION START trigger loading {lua} where it is there, and only logging elsewhere")
+        done = [f"added a MISSION START trigger loading {lua} where it is there, and only logging elsewhere"]
     miz.write(miz_path)
+    for line in done:
+        say(line)
     say("re-open the mission from the Mission menu: Restart replays the copy loaded at launch")
     return OK
 
@@ -626,6 +652,7 @@ def boot_path(miz_path, set_dir, clear):
 
 
 def status(copy, dcs_arg, miz_arg):
+    check_copy(copy)
     miz_path = find_miz(copy, miz_arg)
     failed, ready = False, True
     lua = copy / "dcs-hotload.lua"
@@ -643,7 +670,7 @@ def status(copy, dcs_arg, miz_arg):
         say("MissionScripting.lua: " + (f"{' and '.join(locked)} locked: run unlock" if locked else "unlocked"))
         ready = not locked
 
-    expected = str(lua.resolve())
+    expected = os.path.abspath(lua)
     found = find_boot(Miz.read(miz_path))
     here = [b for b in found if same_path(b.path, expected)]
     if here:
@@ -652,8 +679,12 @@ def status(copy, dcs_arg, miz_arg):
             if not boot.guarded:
                 say(unguarded_note(boot))
     else:
-        say(f"{miz_path.name} " + (f"{what_it_loads(found[0])} instead: patch-miz --retarget" if found
-                                    else "does not load dcs-hotload: run patch-miz"))
+        if not found:
+            say(f"{miz_path.name} does not load dcs-hotload: run patch-miz")
+        for boot in found:
+            say(f"{miz_path.name} {what_it_loads(boot)} instead: patch-miz --retarget")
+            if not boot.guarded:
+                say(unguarded_note(boot))
         ready = False
     return FAIL if failed else OK if ready else DECIDE
 
@@ -662,8 +693,8 @@ def main(argv=None, copy=COPY):
     for stream in (sys.stdout, sys.stderr):    # a captured console may not encode a path
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(errors="backslashreplace")
-    p = argparse.ArgumentParser(prog="hotload-setup.py", description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = ArgParser(prog="hotload-setup.py", description=__doc__,
+                  formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("status")
     s.add_argument("--miz")
@@ -681,8 +712,11 @@ def main(argv=None, copy=COPY):
     change.add_argument("--clear", action="store_true")
     try:
         args = p.parse_args(argv)
-    except SystemExit as e:
+    except SystemExit as e:                     # --help
         return OK if e.code == 0 else USAGE
+    except Usage as e:
+        warn(f"{e} (see --help)")
+        return USAGE
 
     try:
         if args.cmd == "status":
