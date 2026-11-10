@@ -9,9 +9,9 @@ holds, or will hold, `dcs-hotload/`.
   never the one in the plugin's own folder**: `patch-miz` points the mission at the copy it runs
   from.
 
-Every step checks first and changes only what is missing, so running it again is harmless. Exit
-codes: 0 done or nothing to do, 1 failed or refused, 2 a decision is needed, 3 usage. **On a 2,
-tell the user what the message says and ask; rerun with the flag it names only once they agree.**
+Every step checks first and changes only what is missing, so running it again is harmless. Exit 2
+means a decision is needed: **tell the user what the message says and ask; rerun with the flag it
+names only once they agree.**
 
 ## 1. Deploy the tool
 
@@ -25,7 +25,9 @@ on), even over a copy that is already current. Never touches what the `user-*` f
 a `user-scripts/` folder, it says to rename it to `user-f10/`.
 
 A mission already holding an **older** version returns 2: a mission keeps the version it was
-tested with. Updating is `--update`, after asking. A **newer** version is left alone.
+tested with. Updating is `--update`, after asking. A **newer** version is left alone. A copy
+without `bin/hotload-setup.py` (3.0.1 and older) cannot do the steps below: setting the mission up
+needs `--update`, or the README's manual steps.
 
 Then, to see what is still missing:
 

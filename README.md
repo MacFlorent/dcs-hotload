@@ -13,14 +13,16 @@ Scripts can wait in sim time. No external executable.
 
 1. **Get it.** Download `dcs-hotload-<version>.zip` from the repository's GitHub releases and
    extract it into the mission folder: it holds a single `dcs-hotload/` folder.
-2. **Unlock the mission scripting environment.** In `<DCS install>\Scripts\MissionScripting.lua`,
-   comment out `sanitizeModule('io')` and `sanitizeModule('lfs')`. The edit is install-wide, affects
-   multiplayer integrity checks, and DCS updates revert it; dcs-hotload says so on screen when it
-   is missing. From the mission folder, the setup script does it (see *Setup script*):
+2. **Unlock the mission scripting environment.** From the mission folder, the setup script does
+   it (see *Setup script*):
 
    ```bash
    python dcs-hotload/bin/hotload-setup.py unlock --dcs "<DCS install>" --yes
    ```
+
+   By hand: in `<DCS install>\Scripts\MissionScripting.lua`, comment out `sanitizeModule('io')`
+   and `sanitizeModule('lfs')`. The edit is install-wide, affects multiplayer integrity checks, and
+   DCS updates revert it; dcs-hotload says so on screen when it is missing.
 
 3. **Load it at mission start**: a MISSION START trigger with two `DO SCRIPT` actions. The setup
    script adds it to the mission's `.miz`; then re-open the mission from the Mission menu, since
@@ -219,26 +221,29 @@ it is in and on the mission next to it:
 ```
 
 ```bash
-python dcs-hotload/bin/hotload-setup.py status [--dcs DCS]          # what is missing
-python dcs-hotload/bin/hotload-setup.py unlock --dcs DCS [--yes]
-python dcs-hotload/bin/hotload-setup.py patch-miz [--retarget]
-python dcs-hotload/bin/hotload-setup.py boot-path [--set DIR | --clear]
+python dcs-hotload/bin/hotload-setup.py status    [--miz FILE] [--dcs DCS]    # what is missing
+python dcs-hotload/bin/hotload-setup.py unlock    --dcs DCS [--yes]
+python dcs-hotload/bin/hotload-setup.py patch-miz [--miz FILE] [--retarget]
+python dcs-hotload/bin/hotload-setup.py boot-path [--miz FILE] [--set DIR | --clear]
 ```
 
 - `DCS` is the DCS World folder, the one holding `Scripts/MissionScripting.lua`: nothing guesses
   it.
 - `status` reports the copy's version, whether the mailbox is on, whether the `.miz` boots this
   copy and, with `--dcs`, whether `io` and `lfs` are unlocked. It exits 0 when the `.miz` boots
-  this copy and nothing checked is locked; the mailbox is optional and does not count.
+  this copy and nothing checked is locked, 2 when something is missing; the mailbox is optional
+  and does not count.
 - `unlock` changes nothing without `--yes`, and keeps the original as `MissionScripting.lua.bak`.
 - `patch-miz` keeps the original as `<mission>.miz.bak`. A boot that points at another folder, or
   whose path is cleared, is rewritten only with `--retarget`.
 - `boot-path` shows the folder; `--clear` empties it, a step for a build that makes a copy to
-  share; `--set DIR` points it at a folder holding `dcs-hotload.lua`.
+  share; `--set DIR` points it at a folder holding `dcs-hotload.lua`. A build that writes the
+  `.miz` elsewhere names it:
+  `python dcs-hotload/bin/hotload-setup.py boot-path --miz build/<mission>.miz --clear`.
 
 It exits 0 done or nothing to do, 1 failed or refused, 2 a decision is needed (rerun with the flag
-the message names), 3 usage. Each line it prints starts with `hotload-setup:`; what it finds and
-does goes to stdout, refusals and errors to stderr. Its commands, options, exit codes and that
+the message names), 3 usage. Apart from `--help`, each line it prints starts with
+`hotload-setup:`; what it finds and does goes to stdout, refusals and errors to stderr. Its commands, options, exit codes and that
 prefix change incompatibly only with a major version, so a build script can rely on them.
 
 ## Claude Code plugin (optional)
