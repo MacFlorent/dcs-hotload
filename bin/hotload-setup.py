@@ -24,12 +24,6 @@ guesses it.
 
 Exit codes: 0 done or nothing to do, 1 failed or refused, 2 a decision is needed (rerun with the
 flag the message names), 3 usage.
-
-A .miz is a zip of Lua tables, written by the Mission Editor or by a build tool such as VEAF
-Mission Creation Tools. The `mission` table is read and written here without Lua: the writer
-follows the layout of the file it read (indent, line ending, `["key"]` or bare `key`, where a
-table opens and how it closes, `{}` or an open pair for an empty table), so a table it does not
-change comes back as the same text, and numbers are kept as they were written.
 """
 import argparse
 import collections
@@ -51,6 +45,13 @@ def say(message):
     print(f"hotload-setup: {message}")
 
 
+def read_utf8(path):
+    try:
+        return Path(path).read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        raise SetupError(f"{path} is not UTF-8 text") from None
+
+
 def warn(message):
     print(f"hotload-setup: {message}", file=sys.stderr)
 
@@ -67,6 +68,13 @@ class FormatError(SetupError):
 
 class Num(str):
     """A number as the file wrote it: kept as text, so writing it back changes nothing."""
+
+
+# A .miz is a zip of Lua tables, written by the Mission Editor or by a build tool such as VEAF
+# Mission Creation Tools. The `mission` table is read and written here without Lua: the writer
+# follows the layout of the file it read (indent, line ending, `["key"]` or bare `key`, where a
+# table opens and how it closes, `{}` or an open pair for an empty table), so a table it does not
+# change comes back as the same text, and numbers are kept as they were written.
 
 
 class Style:
@@ -302,13 +310,25 @@ class Miz:
 
     @classmethod
     def read(cls, path):
-        with zipfile.ZipFile(path) as z:
-            infos = {i.filename: i for i in z.infolist()}
-            entries = {name: z.read(name) for name in infos}
-        text = entries["mission"].decode("utf-8")
-        name, mission = lua_load(text)
+        path = Path(path)
+        try:
+            with zipfile.ZipFile(path) as z:
+                infos = {i.filename: i for i in z.infolist()}
+                entries = {name: z.read(name) for name in infos}
+        except zipfile.BadZipFile:
+            raise FormatError(f"{path.name} is not a .miz (not a zip file)") from None
+        if "mission" not in entries:
+            raise FormatError(f"{path.name} is not a DCS mission (no mission entry)")
+        try:
+            text = entries["mission"].decode("utf-8")
+        except UnicodeDecodeError:
+            raise FormatError(f"{path.name}: the mission entry is not UTF-8") from None
+        try:
+            name, mission = lua_load(text)
+        except FormatError as e:
+            raise FormatError(f"{path.name}: {e}") from None
         if name != "mission":
-            raise FormatError(f"the mission entry defines {name!r}")
+            raise FormatError(f"{path.name}: the mission entry defines {name!r}")
         return cls(infos, entries, mission, Style.of(text))
 
     def write(self, path):
@@ -332,11 +352,11 @@ class Miz:
                 os.remove(tmp)
 
 
-# The boot trigger: a first DO SCRIPT sets BASE_HOTLOAD_PATH, the second (BOOT_GUARD) loads
+# The boot trigger: a first DO SCRIPT sets BASE_HOTLOAD_PATH, the second (boot-guard.lua) loads
 # dcs-hotload.lua from it, or logs one line when it cannot. A bare dofile, the boot this script
 # wrote before, is still recognized: it is "unguarded".
 
-BOOT_GUARD = (Path(__file__).resolve().parent / "boot-guard.lua").read_text(encoding="utf-8").rstrip("\n")
+GUARD = Path(__file__).resolve().parent / "boot-guard.lua"
 LUA_NAME = "dcs-hotload.lua"
 Boot = collections.namedtuple("Boot", "where path guarded")   # path: the dcs-hotload.lua, "" when cleared
 
@@ -350,6 +370,13 @@ def lua_long(s):
     while f"]{level}]" in s:
         level += "="
     return f"[{level}[{s}]{level}]"
+
+
+def boot_guard():
+    """The guard script, read when a trigger needs it: only patch-miz does."""
+    if not GUARD.is_file():
+        raise SetupError(f"{GUARD} is missing: copy the whole bin/ folder")
+    return read_utf8(GUARD).rstrip("\n")
 
 
 def path_line(folder):
@@ -415,7 +442,7 @@ def add_boot(miz, folder):
     for part in ("actions", "conditions", "flag", "funcStartup"):
         trig.setdefault(part, {})
     n = max([k for k in rules if isinstance(k, int)] + [0]) + 1
-    texts = (path_line(folder), BOOT_GUARD)
+    texts = (path_line(folder), boot_guard())
     rules[n] = {"comment": "dcs-hotload boot", "predicate": "triggerStart", "eventlist": "",
                 "colorItem": "0x00ffffff", "rules": {},
                 "actions": {i: {"predicate": "a_do_script", "text": t} for i, t in enumerate(texts, 1)}}
@@ -462,7 +489,7 @@ def same_path(a, b):
 # ── The copy and the DCS install ────────────────────────────────────────────────────────────────
 
 def lua_version(lua):
-    m = re.search(r'^Hotload\.version = "([^"]+)"', Path(lua).read_text(encoding="utf-8"), re.M)
+    m = re.search(r'^Hotload\.version = "([^"]+)"', read_utf8(lua), re.M)
     return m.group(1) if m else None
 
 
@@ -474,7 +501,7 @@ LOCK = re.compile(r"""^([ \t]*)(sanitizeModule\(\s*['"](io|lfs)['"]\s*\))""", re
 
 
 def locked_modules(mission_scripting):
-    return [m.group(3) for m in LOCK.finditer(Path(mission_scripting).read_text(encoding="utf-8"))]
+    return [m.group(3) for m in LOCK.finditer(read_utf8(mission_scripting))]
 
 
 # ── Commands ────────────────────────────────────────────────────────────────────────────────────
@@ -507,7 +534,7 @@ def unlock(dcs_arg, yes):
              "install-wide (every mission gets file access, multiplayer ones included), affects "
              "multiplayer integrity checks, and DCS updates revert it. Rerun with --yes to make this change")
         return DECIDE
-    text = file.read_text(encoding="utf-8")
+    text = read_utf8(file)
     try:
         backup = file.with_name(file.name + ".bak")
         if not backup.exists():
@@ -662,8 +689,11 @@ def main(argv=None, copy=COPY):
         if args.cmd == "boot-path":
             return boot_path(find_miz(copy, args.miz), args.set, args.clear)
         return patch_miz(find_miz(copy, args.miz), copy, args.retarget)
-    except (SetupError, zipfile.BadZipFile, KeyError) as e:
-        warn(f"cannot read the mission: {e}" if not isinstance(e, SetupError) else str(e))
+    except SetupError as e:
+        warn(str(e))
+        return FAIL
+    except OSError as e:
+        warn(f"{e.filename}: {e.strerror}" if e.filename else str(e))
         return FAIL
 
 

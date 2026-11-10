@@ -240,10 +240,10 @@ class BootLine(Mission):
         self.assertEqual(rule["comment"], "dcs-hotload boot")
         path = f"BASE_HOTLOAD_PATH = [[{self.folder}]]"
         self.assertEqual(rule["actions"][1], {"predicate": "a_do_script", "text": path})
-        self.assertEqual(rule["actions"][2], {"predicate": "a_do_script", "text": setup.BOOT_GUARD})
+        self.assertEqual(rule["actions"][2], {"predicate": "a_do_script", "text": setup.boot_guard()})
         trig = mission["trig"]
         self.assertEqual(trig["actions"][1], "a_do_script(%s);a_do_script(%s);"
-                         % (setup.lua_quote(path), setup.lua_quote(setup.BOOT_GUARD)))
+                         % (setup.lua_quote(path), setup.lua_quote(setup.boot_guard())))
         self.assertEqual(trig["conditions"][1], "return(true)")
         self.assertIs(trig["flag"][1], True)
         self.assertEqual(trig["funcStartup"][1],
@@ -251,10 +251,10 @@ class BootLine(Mission):
 
     def test_the_guard_is_the_tested_file(self):
         guard = ROOT / "bin" / "boot-guard.lua"
-        self.assertEqual(setup.BOOT_GUARD, guard.read_text(encoding="utf-8").rstrip("\n"))
+        self.assertEqual(setup.boot_guard(), guard.read_text(encoding="utf-8").rstrip("\n"))
 
     def test_the_readme_gives_the_same_guard(self):
-        listed = "".join("   " + line + "\n" for line in setup.BOOT_GUARD.split("\n"))   # in a list item
+        listed = "".join("   " + line + "\n" for line in setup.boot_guard().split("\n"))   # in a list item
         self.assertIn(listed, (ROOT / "README.md").read_text(encoding="utf-8"))
 
     def test_a_folder_with_brackets_gets_a_longer_bracket(self):
@@ -456,6 +456,78 @@ class BootLine(Mission):
         self.assertEqual(setup.find_boot(setup.Miz.read(self.miz)), [])
 
 
+# ── Errors are one line and an exit code, never a traceback ─────────────────────────────────────
+
+class Errors(Mission):
+    def fails(self, *args, mention):
+        """main() fails with a hotload-setup: line on stderr that holds `mention`."""
+        code, out, err = self.run_main(*args)
+        self.assertEqual(code, setup.FAIL, err)
+        self.assertTrue(err.startswith("hotload-setup: "), err)
+        self.assertIn(mention, err)
+        return err
+
+    def test_a_missing_miz(self):
+        self.fails("status", "--miz", str(self.dir / "nope.miz"), mention="nope.miz")
+
+    def test_a_miz_that_is_not_a_zip(self):
+        self.miz.write_bytes(b"x")
+        self.fails("status", mention="not a .miz")
+
+    def test_a_zip_without_a_mission_entry(self):
+        with zipfile.ZipFile(self.miz, "w") as z:
+            z.writestr("options", "options = {}")
+        self.fails("status", mention="not a DCS mission")
+
+    def test_a_mission_entry_that_is_not_utf8(self):
+        with zipfile.ZipFile(self.miz, "w") as z:
+            z.writestr("mission", b"\xff\xfe")
+        self.fails("status", mention="not UTF-8")
+
+    def test_a_mission_entry_that_does_not_parse(self):
+        with zipfile.ZipFile(self.miz, "w") as z:
+            z.writestr("mission", "mission = nonsense")
+        self.fails("status", mention="m.miz: line 1")
+
+    def test_a_mission_scripting_that_is_not_utf8(self):
+        (self.dir / "Scripts").mkdir()
+        (self.dir / "Scripts" / "MissionScripting.lua").write_bytes(b"\xff")
+        self.fails("unlock", "--dcs", str(self.dir), mention="not UTF-8")
+
+    def test_a_hotload_that_is_not_utf8(self):
+        (self.copy / "dcs-hotload.lua").write_bytes(b"\xff")
+        self.fails("status", mention="dcs-hotload.lua is not UTF-8")
+
+    def test_a_folder_it_cannot_write(self):
+        before = self.miz.read_bytes()
+        denied = PermissionError(13, "Permission denied", str(self.dir))
+        with mock.patch.object(setup.tempfile, "mkstemp", side_effect=denied):
+            self.fails("patch-miz", mention="Permission denied")
+        self.assertEqual(self.miz.read_bytes(), before)
+
+    def test_a_backup_it_cannot_write(self):
+        denied = PermissionError(13, "Permission denied", str(self.dir / "m.miz.bak"))
+        with mock.patch.object(setup.shutil, "copy2", side_effect=denied):
+            self.fails("patch-miz", mention="m.miz.bak")
+
+    def test_a_key_error_is_not_reported_as_a_mission(self):
+        with mock.patch.object(setup, "find_boot", side_effect=KeyError("bug")):
+            with self.assertRaises(KeyError):
+                self.run_main("status")
+
+    def test_only_patch_miz_needs_the_guard(self):
+        with mock.patch.object(setup, "GUARD", self.dir / "no-guard" / "boot-guard.lua"):
+            self.assertNotEqual(self.run_main("status")[0], setup.FAIL)
+            self.assertEqual(self.run_main("boot-path")[0], setup.FAIL)   # no trigger yet, not the guard
+            self.fails("patch-miz", mention="boot-guard.lua is missing")
+
+    def test_help_is_usage(self):
+        code, out, err = self.run_main("--help")
+        self.assertEqual(code, setup.OK)
+        self.assertIn("patch-miz", out)
+        self.assertNotIn("zip of Lua tables", out)
+
+
 # ── Showing, setting or clearing the boot path ──────────────────────────────────────────────────
 
 class BootPath(Mission):
@@ -496,7 +568,7 @@ class BootPath(Mission):
         self.assertEqual(shown, "BASE_HOTLOAD_PATH = [[]]")
         self.assertIn(setup.lua_quote("BASE_HOTLOAD_PATH = [[]]"), compiled)
         self.assertNotIn("old", compiled)
-        self.assertIn(setup.lua_quote(setup.BOOT_GUARD), compiled)
+        self.assertIn(setup.lua_quote(setup.boot_guard()), compiled)
         after = miz_entries(self.miz)
         self.assertEqual(list(after), list(before))
         for name in before:
