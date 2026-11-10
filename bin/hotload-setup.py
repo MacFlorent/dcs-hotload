@@ -45,7 +45,6 @@ from pathlib import Path
 OK, FAIL, DECIDE, USAGE = 0, 1, 2, 3
 
 COPY = Path(__file__).resolve().parents[1]
-USER_FOLDERS = ("user-lib", "user-f10", "user-inbox", "user-outbox")
 
 
 def say(message):
@@ -460,24 +459,11 @@ def same_path(a, b):
     return bool(a) and bool(b) and norm(a) == norm(b)
 
 
-# ── Versions and the release file set ──────────────────────────────────────────────────────────
+# ── The copy and the DCS install ────────────────────────────────────────────────────────────────
 
 def lua_version(lua):
     m = re.search(r'^Hotload\.version = "([^"]+)"', Path(lua).read_text(encoding="utf-8"), re.M)
     return m.group(1) if m else None
-
-
-def plugin_version():
-    return lua_version(COPY / "dcs-hotload.lua")
-
-
-def version_key(version):
-    return tuple(int(part) for part in version.split("."))
-
-
-def shipped():
-    lines = (COPY / ".github" / "scripts" / "shipped.txt").read_text(encoding="utf-8").splitlines()
-    return [line.strip() for line in lines if line.strip() and not line.startswith("#")]
 
 
 def is_dcs(path):
@@ -492,53 +478,6 @@ def locked_modules(mission_scripting):
 
 
 # ── Commands ────────────────────────────────────────────────────────────────────────────────────
-
-def deploy(mission, update):
-    target = mission / "dcs-hotload"
-    want = plugin_version()
-    lua = target / "dcs-hotload.lua"
-    if lua.exists():
-        have = lua_version(lua)
-        if have == want:
-            say(f"dcs-hotload {have} is already deployed in {target}")
-        elif have is None or version_key(have) > version_key(want):
-            say(f"{target} holds dcs-hotload {have}, not older than the plugin's {want}: left alone")
-            return FAIL
-        elif not update:
-            say(f"{target} holds dcs-hotload {have}; the plugin has {want}. A mission keeps the version it "
-                "was tested with: rerun with --update once the user agrees")
-            return DECIDE
-        else:
-            for path in shipped():
-                old = target / path
-                if old.is_dir():
-                    shutil.rmtree(old)
-                elif old.exists():
-                    old.unlink()
-            copy_shipped(target)
-            say(f"updated {target} from {have} to {want}; user-* folders untouched")
-    else:
-        copy_shipped(target)
-        say(f"deployed dcs-hotload {want} into {target}")
-    # An empty user-f10/ beside a mission's user-scripts/ would hide hotload's own rename message.
-    renaming = (target / "user-scripts").is_dir() and not (target / "user-f10").exists()
-    for folder in USER_FOLDERS:
-        if not (renaming and folder == "user-f10"):
-            (target / folder).mkdir(exist_ok=True)
-    if renaming:
-        say(f"rename user-scripts/ to user-f10/ in {target}: the F10 menu reads only user-f10/")
-    return OK
-
-
-def copy_shipped(target):
-    target.mkdir(parents=True, exist_ok=True)
-    for path in shipped():
-        src = COPY / path
-        if src.is_dir():
-            shutil.copytree(src, target / path)
-        else:
-            shutil.copy2(src, target / path)
-
 
 def find_miz(copy, miz_arg):
     """The .miz to work on: --miz as given, else the only one next to the copy."""
@@ -699,9 +638,6 @@ def main(argv=None, copy=COPY):
     s = sub.add_parser("status")
     s.add_argument("--miz")
     s.add_argument("--dcs")
-    d = sub.add_parser("deploy")
-    d.add_argument("--mission", default=".")
-    d.add_argument("--update", action="store_true")
     u = sub.add_parser("unlock")
     u.add_argument("--dcs", required=True)
     u.add_argument("--yes", action="store_true")
@@ -721,8 +657,6 @@ def main(argv=None, copy=COPY):
     try:
         if args.cmd == "status":
             return status(copy, args.dcs, args.miz)
-        if args.cmd == "deploy":
-            return deploy(Path(args.mission), args.update)
         if args.cmd == "unlock":
             return unlock(args.dcs, args.yes)
         if args.cmd == "boot-path":
