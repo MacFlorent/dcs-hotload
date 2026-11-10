@@ -20,7 +20,7 @@ scripting, not hotload.
 From the mission folder:
 
 ```bash
-python <this skill's folder>/scripts/hotload-setup.py status --dcs DCS
+python <plugin root>/bin/hotload-setup.py status --dcs DCS
 ```
 
 `DCS` is the DCS World folder: find it once and pass it wherever `--dcs` is asked. On Windows, the

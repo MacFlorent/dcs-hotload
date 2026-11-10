@@ -1,12 +1,12 @@
 --- The guarded boot that hotload-setup.py writes into a mission: its second DO SCRIPT action, read
---- from skills/piloting-dcs-hotload/scripts/boot-guard.lua, after BASE_HOTLOAD_PATH is set.
+--- from bin/boot-guard.lua, after BASE_HOTLOAD_PATH is set.
 
 local dir = debug.getinfo(1, "S").source:match("^@(.+)[\\/]") or "."
 local lu = dofile(dir .. "/luaunit.lua")
 local Stub = dofile(dir .. "/dcs-stub.lua")
 
 local REPO = Stub.REPO
-local GUARD_FILE = REPO .. "/skills/piloting-dcs-hotload/scripts/boot-guard.lua"
+local GUARD_FILE = REPO .. "/bin/boot-guard.lua"
 
 local function guard()
   local f = assert(io.open(GUARD_FILE, "r"))

@@ -45,7 +45,7 @@ from pathlib import Path
 
 OK, FAIL, DECIDE, USAGE = 0, 1, 2, 3
 
-PLUGIN_ROOT = Path(__file__).resolve().parents[3]
+PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 USER_FOLDERS = ("user-lib", "user-f10", "user-inbox", "user-outbox")
 
 

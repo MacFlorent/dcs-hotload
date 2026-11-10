@@ -1,4 +1,4 @@
-"""Tests of skills/piloting-dcs-hotload/scripts/hotload-setup.py, the setup helper of the plugin.
+"""Tests of bin/hotload-setup.py, the setup script shipped with hotload.
 
     python -m unittest discover -s test/python
 
@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "empty-caucasus.miz"
 
 spec = importlib.util.spec_from_file_location(
-    "hotload_setup", ROOT / "skills" / "piloting-dcs-hotload" / "scripts" / "hotload-setup.py")
+    "hotload_setup", ROOT / "bin" / "hotload-setup.py")
 setup = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(setup)
 
@@ -234,7 +234,7 @@ class BootLine(Scratch):
                          "if mission.trig.conditions[1]() then mission.trig.actions[1]() end")
 
     def test_the_guard_is_the_tested_file(self):
-        guard = ROOT / "skills" / "piloting-dcs-hotload" / "scripts" / "boot-guard.lua"
+        guard = ROOT / "bin" / "boot-guard.lua"
         self.assertEqual(setup.BOOT_GUARD, guard.read_text(encoding="utf-8").rstrip("\n"))
 
     def test_the_readme_gives_the_same_guard(self):

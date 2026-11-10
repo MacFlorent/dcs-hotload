@@ -1,11 +1,11 @@
 # Setting dcs-hotload up in a mission
 
-`scripts/hotload-setup.py` (in this skill's folder, Python 3) does each step, from the mission
+`<plugin root>/bin/hotload-setup.py` (Python 3) does each step, from the mission
 folder: the folder that holds the `.miz` and holds, or will hold, `dcs-hotload/`. Every step
 checks first and changes only what is missing, so running it again is harmless.
 
 ```bash
-python <skill>/scripts/hotload-setup.py status --dcs DCS     # what is missing; exit 0 when all set
+python <plugin root>/bin/hotload-setup.py status --dcs DCS     # what is missing; exit 0 when all set
 ```
 
 Exit codes: 0 done or nothing to do, 1 failed or refused, 2 a decision is needed, 3 usage. **On a
@@ -15,7 +15,7 @@ agree.**
 ## 1. Deploy the tool
 
 ```bash
-python <skill>/scripts/hotload-setup.py deploy
+python <plugin root>/bin/hotload-setup.py deploy
 ```
 
 Copies the tool into `dcs-hotload/` — the release package's files, nothing else — and creates
@@ -29,7 +29,7 @@ tested with. Updating is `deploy --update`, after asking. A **newer** version is
 ## 2. Unlock the scripting environment
 
 ```bash
-python <skill>/scripts/hotload-setup.py unlock --dcs DCS
+python <plugin root>/bin/hotload-setup.py unlock --dcs DCS
 ```
 
 hotload needs `io` and `lfs`, which DCS's `Scripts/MissionScripting.lua` removes from missions.
@@ -43,7 +43,7 @@ message says so.
 ## 3. Make the `.miz` load it
 
 ```bash
-python <skill>/scripts/hotload-setup.py patch-miz <mission>.miz
+python <plugin root>/bin/hotload-setup.py patch-miz <mission>.miz
 ```
 
 Adds a MISSION START trigger that sets `BASE_HOTLOAD_PATH` to `<mission>\dcs-hotload` (an
@@ -86,9 +86,9 @@ this machine, and the mission does not look for hotload anywhere, even where tha
 to exist:
 
 ```bash
-python <skill>/scripts/hotload-setup.py boot-path <mission>.miz --clear
-python <skill>/scripts/hotload-setup.py boot-path <mission>.miz              # shows it
-python <skill>/scripts/hotload-setup.py boot-path <mission>.miz --set dcs-hotload
+python <plugin root>/bin/hotload-setup.py boot-path <mission>.miz --clear
+python <plugin root>/bin/hotload-setup.py boot-path <mission>.miz              # shows it
+python <plugin root>/bin/hotload-setup.py boot-path <mission>.miz --set dcs-hotload
 ```
 
 `--set` takes the folder holding `dcs-hotload.lua`, and gives the path back for testing here. A
