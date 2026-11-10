@@ -5,6 +5,24 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
 
 ## [Unreleased]
 
+- **The setup script ships with hotload**: `bin/hotload-setup.py`, in the release package and in
+  every deployed copy, checks a mission (`status`), unlocks `MissionScripting.lua` (`unlock`), adds
+  or retargets the boot trigger (`patch-miz`) and shows, sets or clears the boot path
+  (`boot-path`), without Claude Code. It works on the copy it is in and on the mission's only
+  `.miz` next to that copy; `--miz FILE` names another. `patch-miz` and `boot-path` take `--miz`
+  instead of a file argument, and `patch-miz` no longer takes `--mission`. A build script that
+  looked for the script in the plugin cache now calls the mission's
+  `dcs-hotload/bin/hotload-setup.py`. Its command line, exit codes and output prefix are now a
+  public interface, changed incompatibly only with a major version.
+- **The setup script reports problems in one line**: a missing or unreadable `.miz`, a folder it
+  cannot write in, a file that is not UTF-8 or a missing `boot-guard.lua` end in a
+  `hotload-setup:` line and exit 1, not a Python traceback. Refusals and errors go to stderr,
+  and a console that cannot show a path no longer stops it. `status` no longer needs `--dcs`, and
+  no longer counts a missing mailbox, which is optional.
+- **The plugin deploys with its own script**: `deploy` leaves the setup script for the skill's
+  `hotload-deploy.py`, which also recreates a copy's missing `user-*` folders. The skill then runs
+  the mission's copy of the setup script for the other steps.
+
 ## [3.0.1] — 2026-11-09
 
 - **Setup reads a `.miz` built by VEAF Mission Creation Tools**: `status --miz` and `patch-miz`

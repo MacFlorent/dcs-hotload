@@ -17,14 +17,14 @@ loaded.
 - **Merge a pull request** unless asked to.
 - **"Fix" the broken scripts in `examples/`** (`syntax-error.lua`, `runtime-error.lua`, the load
   cycle): they are self-tests of how hotload reports failures.
-- **Change the mailbox format or `Hotload.*` incompatibly** without a major version: other tools
-  depend on them.
+- **Change the mailbox format, `Hotload.*` or the command line of `bin/hotload-setup.py`
+  incompatibly** without a major version: other tools depend on them.
 
 ## Commands
 
 ```
 lua5.1 test/run.lua                           # test hotload, offline; a name filters
-python -m unittest discover -s test/python    # test the client and the plugin's setup script
+python -m unittest discover -s test/python    # test the client, the setup and deploy scripts
 bash .github/scripts/lint.sh                  # luacheck at its pinned version, as CI runs it
 ```
 
@@ -41,7 +41,7 @@ not `lua5.1`; at its default location: `"/c/Program Files (x86)/Lua/5.1/lua.exe"
 
 | About to… | Read |
 |---|---|
-| change `dcs-hotload.lua` or `bin/hotload.py` | `CONTRIBUTING.md` — test first, changelog |
+| change `dcs-hotload.lua`, `bin/hotload.py` or `bin/hotload-setup.py` | `CONTRIBUTING.md` — test first, changelog |
 | add or change a test | `CONTRIBUTING.md`; `test/dcs-stub.lua` |
 | open a pull request, or open, update or archive a piece of work | `CONTRIBUTING.md` |
 | edit a guidance file | `CONTRIBUTING.md` — how guidance is written |

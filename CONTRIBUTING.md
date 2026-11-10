@@ -8,7 +8,8 @@ Python client. This file holds every rule for changing it; `CLAUDE.md` only poin
 - **Lua 5.1 with LuaFileSystem**, to run the tests. On Windows, *Lua for Windows* has both, at
   `C:\Program Files (x86)\Lua\5.1\lua.exe`. On Linux, `lua5.1` and
   `luarocks --lua-version=5.1 install luafilesystem`.
-- **Python 3.8 or later**, for the mailbox client, the plugin's setup script and their tests
+- **Python 3.8 or later**, for the mailbox client, the setup script, the plugin's deploy script
+  and their tests
   (standard library only).
 - **A Bash shell** (Git Bash on Windows), for the commands below, and `curl`,
   with which `.github/scripts/lint.sh` fetches luacheck.
@@ -21,11 +22,12 @@ Python client. This file holds every rule for changing it; `CLAUDE.md` only poin
 |---|---|
 | `dcs-hotload.lua` | the tool: everything a mission loads |
 | `bin/hotload.py` | the mailbox client, and the module a Python driver imports |
+| `bin/hotload-setup.py`, `bin/boot-guard.lua` | the setup script, and the boot trigger's second action, which it writes |
 | `examples/` | self-test scripts, run in DCS and by the tests |
-| `.claude-plugin/`, `skills/` | the Claude Code plugin: its manifest and its skill — see *Writing guidance*; not in the release package |
+| `.claude-plugin/`, `skills/` | the Claude Code plugin: its manifest and its skill, with the deploy script `skills/piloting-dcs-hotload/scripts/hotload-deploy.py` — see *Writing guidance*; not in the release package |
 | `test/` | the offline suite: plain Lua 5.1 against a stub DCS |
-| `test/python/` | the tests of the mailbox client and of the plugin's setup script, `skills/piloting-dcs-hotload/scripts/hotload-setup.py` |
-| `.github/scripts/shipped.txt` | what a mission gets: the release package, and what the setup script deploys |
+| `test/python/` | the tests of the mailbox client, the setup script and the deploy script |
+| `.github/scripts/shipped.txt` | what a mission gets: the release package, and what the deploy script copies |
 | `.tracker/` | work in progress and work done, and `IDEAS.md` — see *Tracking work* |
 | `.drafts/` | local working space, git-ignored |
 | `.github/scripts/package.sh` | builds the release package into `dist/` — see *Releasing* |
@@ -39,7 +41,7 @@ What a change must pass before its pull request:
 
 ```
 lua5.1 test/run.lua            # test hotload, every suite; a name filters: ... test/run.lua mailbox
-python -m unittest discover -s test/python    # test the client and the setup script
+python -m unittest discover -s test/python    # test the client, the setup and deploy scripts
 bash .github/scripts/lint.sh   # luacheck at its pinned version, as CI runs it
 ```
 
@@ -62,7 +64,7 @@ it:
 | | Where it runs | What belongs in it |
 |---|---|---|
 | `test/` | plain Lua 5.1 and CI, against `test/dcs-stub.lua` | the runner, waits, the guard, the mailbox, the menu, the serializer, startup. **New tests go here** |
-| `test/python/` | Python 3 and CI | the mailbox client, against a fake mission on real files and a fake clock: Lua data, waits, the journal, the command line. The plugin's setup script: the `.miz` reader and writer, the boot trigger, deploying, unlocking |
+| `test/python/` | Python 3 and CI | the mailbox client, against a fake mission on real files and a fake clock: Lua data, waits, the journal, the command line. The setup script: the `.miz` reader and writer, the boot trigger, unlocking, its errors, and a run from a packaged copy. The deploy script |
 | `examples/` self-tests | inside DCS, copied into a mission | what a stub cannot show: how DCS renders the menu, real sim timing, how DCS names a loaded chunk |
 
 To run the self-tests, copy `examples/user-f10/selftest/` into a mission's `user-f10/`
@@ -162,8 +164,9 @@ worth it.
 
 [Semantic versioning](https://semver.org/) of `Hotload.version`, in `dcs-hotload.lua`, which the
 `HOTLOAD: ready` log line prints. The mailbox is a public interface other tools depend on — the
-`user-inbox/` and `user-outbox/` folders, the outbox file format and its status values — so
-changing it incompatibly is a major version.
+`user-inbox/` and `user-outbox/` folders, the outbox file format and its status values — and so
+is the setup script's command line, which build scripts call — its commands, options, exit codes
+and `hotload-setup:` prefix. Changing either incompatibly is a major version.
 
 ## Releasing
 
