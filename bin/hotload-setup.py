@@ -659,6 +659,9 @@ def status(copy, dcs_arg, miz_arg):
 
 
 def main(argv=None, copy=COPY):
+    for stream in (sys.stdout, sys.stderr):    # a captured console may not encode a path
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="backslashreplace")
     p = argparse.ArgumentParser(prog="hotload-setup.py", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)

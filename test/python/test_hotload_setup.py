@@ -11,6 +11,8 @@ import importlib.util
 import io
 import os
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -647,6 +649,49 @@ class BootPath(Mission):
 
     def test_set_and_clear_together_is_a_usage_error(self):
         self.assertEqual(self.run_cmd("--set", str(self.target), "--clear")[0], setup.USAGE)
+
+
+# ── The script as shipped: a copy in a mission folder, run as a separate process ────────────────
+
+class Packaged(Scratch):
+    """What a build script or a player does: python <mission>/dcs-hotload/bin/hotload-setup.py, with
+    a console that can only write ASCII, in a folder whose name is neither ASCII nor free of spaces."""
+
+    def setUp(self):
+        super().setUp()
+        self.mission = self.dir / "Mission Миссия"
+        self.copy = self.mission / "dcs-hotload"
+        self.copy.mkdir(parents=True)
+        shutil.copy(FIXTURE, self.mission / "m.miz")
+        shutil.copy(ROOT / "dcs-hotload.lua", self.copy / "dcs-hotload.lua")
+        shutil.copytree(ROOT / "bin", self.copy / "bin", ignore=shutil.ignore_patterns("__pycache__"))
+
+    def run_script(self, *args):
+        env = {**os.environ, "PYTHONIOENCODING": "ascii", "PYTHONUTF8": "0"}
+        # Not -I: it would ignore PYTHONIOENCODING, which stands for the console of a build script.
+        done = subprocess.run([sys.executable, "-B", "-s", str(self.copy / "bin" / "hotload-setup.py"), *args],
+                              cwd=self.dir, capture_output=True, env=env)
+        return done.returncode, done.stdout.decode("ascii"), done.stderr.decode("ascii")
+
+    def test_patch_status_and_clear_from_the_copy(self):
+        code, out, err = self.run_script("patch-miz")
+        self.assertEqual((code, err), (0, ""), out)
+        code, out, err = self.run_script("status")
+        self.assertEqual((code, err), (0, ""), out)
+        self.assertIn("\\u041c\\u0438\\u0441\\u0441\\u0438\\u044f", out)    # escaped, not lost
+        code, out, err = self.run_script("boot-path", "--clear")
+        self.assertEqual((code, err), (0, ""), out)
+        found = setup.find_boot(setup.Miz.read(self.mission / "m.miz"))
+        self.assertEqual([b.path for b in found], [""])
+
+    def test_reads_nothing_outside_its_copy(self):
+        for name in (".github", "skills", ".claude-plugin"):
+            self.assertFalse((self.dir / name).exists() or (self.mission / name).exists(), name)
+        code, out, err = self.run_script("patch-miz")
+        self.assertEqual((code, err), (0, ""), out)
+        code, out, err = self.run_script("status")
+        self.assertEqual(code, 0, err)
+        self.assertIn(f"dcs-hotload {setup.lua_version(ROOT / 'dcs-hotload.lua')} in ", out)
 
 
 # ── Unlocking MissionScripting.lua ──────────────────────────────────────────────────────────────
