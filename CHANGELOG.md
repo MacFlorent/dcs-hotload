@@ -5,6 +5,8 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
 
 ## [Unreleased]
 
+## [3.1.0] — 2026-11-11
+
 - **The setup script ships with hotload**: `bin/hotload-setup.py`, in the release package and in
   every deployed copy, checks a mission (`status`), unlocks `MissionScripting.lua` (`unlock`), adds
   or retargets the boot trigger (`patch-miz`) and shows, sets or clears the boot path
