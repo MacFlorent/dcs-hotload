@@ -24,15 +24,19 @@ Scripts can wait in sim time. No external executable.
    and `sanitizeModule('lfs')`. The edit is install-wide, affects multiplayer integrity checks, and
    DCS updates revert it; dcs-hotload says so on screen when it is missing.
 
-3. **Load it at mission start**: a MISSION START trigger with two `DO SCRIPT` actions. The setup
-   script adds it to the mission's `.miz`; then re-open the mission from the Mission menu, since
-   Restart replays the copy loaded at launch:
+3. **Load it at mission start.** Whatever runs `dcs-hotload.lua` from disk once, when the mission
+   starts, will do: a `DO SCRIPT` with `dofile([[D:\path\to\mission\dcs-hotload\dcs-hotload.lua]])`,
+   or a line in a script the mission already runs then. hotload finds its folders next to the file.
+
+   The recommended way is a MISSION START trigger with two `DO SCRIPT` actions, because it stays
+   quiet where hotload is not installed. The setup script adds it to the mission's `.miz`; then
+   re-open the mission from the Mission menu, since Restart replays the copy loaded at launch:
 
    ```bash
    python dcs-hotload/bin/hotload-setup.py patch-miz
    ```
 
-   By hand, in the Mission Editor, the first action names the folder:
+   In the Mission Editor, the first action names the folder:
 
    ```lua
    BASE_HOTLOAD_PATH = [[D:\path\to\mission\dcs-hotload]]
@@ -49,8 +53,11 @@ Scripts can wait in sim time. No external executable.
    ```
 
    Where the folder does not exist, as on a player's machine, the mission only logs a
-   `HOTLOAD: not booted:` line in `dcs.log` and shows nothing. A bare
-   `dofile([[...\dcs-hotload.lua]])` would raise a script error there instead. In a copy you share,
+   `HOTLOAD: not booted:` line in `dcs.log` and shows nothing; a bare `dofile` raises a script
+   error there instead. The setup script sees this trigger, and a bare `dofile` in a trigger or in
+   a script the `.miz` embeds; `boot-path` works only on this trigger, and a boot it cannot see,
+   such as a line in a script read from disk, makes `status` report the mission as not set up. In
+   a copy you share,
    emptying the path (`boot-path --clear`, or `BASE_HOTLOAD_PATH = [[]]` by hand) is good
    practice: the file then names no local folder.
 
