@@ -12,7 +12,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 
-# What a mission gets: the list in shipped.txt, which the plugin's setup also deploys from.
+# What a mission gets: the list in shipped.txt, which the plugin's deploy script also copies from.
 mapfile -t shipped < <(grep -v -e '^#' -e '^[[:space:]]*$' .github/scripts/shipped.txt)
 
 die() { echo "package: $*" >&2; exit 1; }

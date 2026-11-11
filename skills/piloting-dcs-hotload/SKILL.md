@@ -17,21 +17,23 @@ scripting, not hotload.
 
 ## Is this mission set up?
 
-From the mission folder:
+From the mission folder, ask the mission's copy:
 
 ```bash
-python <this skill's folder>/scripts/hotload-setup.py status --dcs DCS
+python dcs-hotload/bin/hotload-setup.py status --dcs DCS
 ```
+
+No `dcs-hotload/bin/hotload-setup.py` there: hotload is not deployed, or its copy is 3.0.1 or
+older; follow `setup.md`.
 
 `DCS` is the DCS World folder: find it once and pass it wherever `--dcs` is asked. On Windows, the
 installer records it as `Path` under the registry key `HKCU\Software\Eagle Dynamics\DCS World`
 (seen with DCS 2.9.30); check that the folder holds `Scripts/MissionScripting.lua`. When it does
 not, ask the user.
 
-Exit 0: the tool is deployed with the mailbox on (a version older than the plugin's is reported,
-not counted as missing: the mission may have been tested with it), DCS lets missions use
-`io` and `lfs`, and the `.miz` loads this mission's copy. Otherwise it names what is missing:
-follow `setup.md`, which also says how to check a running mission.
+`status` exits 0 when DCS lets missions use `io` and `lfs` and the `.miz` loads this mission's
+copy. Otherwise it names what is missing: follow `setup.md`, which also says how to check a
+running mission and how a copy older than the plugin is updated.
 
 ## Send a command: one call
 

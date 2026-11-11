@@ -12,7 +12,7 @@ files["dcs-hotload.lua"] = {
 }
 
 -- The second DO SCRIPT action of the boot trigger hotload-setup.py writes; the first sets the path.
-files["skills/piloting-dcs-hotload/scripts/boot-guard.lua"] = {
+files["bin/boot-guard.lua"] = {
   globals = { "Hotload" },
   read_globals = { "env", "BASE_HOTLOAD_PATH" },
 }

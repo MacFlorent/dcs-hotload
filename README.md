@@ -13,12 +13,30 @@ Scripts can wait in sim time. No external executable.
 
 1. **Get it.** Download `dcs-hotload-<version>.zip` from the repository's GitHub releases and
    extract it into the mission folder: it holds a single `dcs-hotload/` folder.
-2. **Unlock the mission scripting environment.** In `<DCS install>\Scripts\MissionScripting.lua`,
-   comment out `sanitizeModule('io')` and `sanitizeModule('lfs')`. The edit is install-wide, affects
-   multiplayer integrity checks, and DCS updates revert it; dcs-hotload says so on screen when it
-   is missing.
-3. **Load it at mission start**: a MISSION START trigger with two `DO SCRIPT` actions. The first
-   names the folder:
+2. **Unlock the mission scripting environment.** From the mission folder, the setup script does
+   it (see *Setup script*):
+
+   ```bash
+   python dcs-hotload/bin/hotload-setup.py unlock --dcs "<DCS install>"
+   ```
+
+   By hand: in `<DCS install>\Scripts\MissionScripting.lua`, comment out `sanitizeModule('io')`
+   and `sanitizeModule('lfs')`. The edit is install-wide, affects multiplayer integrity checks, and
+   DCS updates revert it; dcs-hotload says so on screen when it is missing.
+
+3. **Load it at mission start.** Whatever runs `dcs-hotload.lua` from disk once, when the mission
+   starts, will do: a `DO SCRIPT` with `dofile([[D:\path\to\mission\dcs-hotload\dcs-hotload.lua]])`,
+   or a line in a script the mission already runs then. hotload finds its folders next to the file.
+
+   The recommended way is a MISSION START trigger with two `DO SCRIPT` actions, because it stays
+   quiet where hotload is not installed. The setup script adds it to the mission's `.miz`; then
+   re-open the mission from the Mission menu, since Restart replays the copy loaded at launch:
+
+   ```bash
+   python dcs-hotload/bin/hotload-setup.py patch-miz
+   ```
+
+   In the Mission Editor, the first action names the folder:
 
    ```lua
    BASE_HOTLOAD_PATH = [[D:\path\to\mission\dcs-hotload]]
@@ -34,11 +52,13 @@ Scripts can wait in sim time. No external executable.
    Hotload = Hotload or {}; Hotload.root = p; f()
    ```
 
-   Where the folder does not exist, as on a player's machine, the mission only logs a
-   `HOTLOAD: not booted:` line in `dcs.log` and shows nothing. A bare
-   `dofile([[...\dcs-hotload.lua]])` would raise a script error there instead. In a copy you share,
-   emptying the path (`BASE_HOTLOAD_PATH = [[]]`) is good practice: the file then names no local
-   folder.
+   Where the folder does not exist, as on a player's machine, the mission writes a
+   `HOTLOAD: not booted:` line to `dcs.log` and runs on, with no error on screen; a bare `dofile`
+   raises a script error there instead. The setup script sees this trigger, and a bare `dofile` in
+   a trigger or in a script the `.miz` embeds; `boot-path` works only on this trigger, and a boot
+   it cannot see, such as a line in a script read from disk, makes `status` report the mission as
+   not set up. In a copy you share, emptying the path (`boot-path --clear`, or
+   `BASE_HOTLOAD_PATH = [[]]` by hand) is good practice: the file then names no local folder.
 
 4. `dcs-hotload <version> ready` shows on screen (and `HOTLOAD: ready` in `dcs.log`); open
    **F10 → Hotload**.
@@ -194,6 +214,43 @@ A driver written in Python imports it, with `bin/` on `sys.path`. `Driver.call` 
 and waits for it as `run` does. `Driver.run` does the same under a journal, so a series of
 commands resumes where it stopped after a crash. Their docstrings are the reference.
 
+## Setup script
+
+`bin/hotload-setup.py` does steps 2 and 3 of *Setup*, checks them, and shows or changes the folder
+a mission boots hotload from. It needs Python 3.8 or later, and nothing else. It works on the copy
+it is in and on the mission next to it:
+
+```
+<mission folder>/
+  <mission>.miz        the only .miz here; --miz FILE names one kept elsewhere, or one of several
+  dcs-hotload/         the copy holding this script
+```
+
+```bash
+python dcs-hotload/bin/hotload-setup.py <command> [options]
+```
+
+| Command | Option | What it does |
+|---|---|---|
+| `status` | | Reports the copy's version, whether the mailbox is on, and what the `.miz` boots. Exits 0 when the `.miz` boots this copy and nothing checked is locked, 2 when something is missing; the mailbox is optional and does not count. |
+| | `--dcs DCS` | Also checks that `io` and `lfs` are unlocked in that install. |
+| `unlock` | `--dcs DCS`, required | Comments out `sanitizeModule('io')` and `sanitizeModule('lfs')` in the install's `Scripts/MissionScripting.lua`, the edit of *Setup* step 2, and keeps the original as `MissionScripting.lua.bak`. |
+| `patch-miz` | | Adds the trigger of *Setup* step 3 to the `.miz`, pointing at this copy, and keeps the original as `<mission>.miz.bak`. A boot of another folder, or whose path is cleared, is pointed at this copy instead, and the output says what it was. A `.miz` that already boots this copy is left as it is. |
+| `boot-path` | | Shows the folder the trigger points at. |
+| | `--clear` | Empties it, a step for a build that makes a copy to share: wherever it starts, the mission then writes a `HOTLOAD: not booted:` line to `dcs.log` and runs on, with no error on screen. |
+| | `--set [DIR]` | Points it at `DIR`, a folder holding `dcs-hotload.lua`, or at this copy without `DIR`. |
+
+- `--miz FILE`, for every command but `unlock`, names the `.miz` when it is not the only one next
+  to the copy. A build that writes the `.miz` elsewhere clears it with
+  `python dcs-hotload/bin/hotload-setup.py boot-path --miz build/<mission>.miz --clear`.
+- `DCS` is the DCS World folder, the one holding `Scripts/MissionScripting.lua`: nothing guesses
+  it.
+
+It exits 0 done or nothing to do, 1 failed or refused, 2 not set up (`status` only), 3 usage.
+Apart from `--help`, each line it prints starts with `hotload-setup:`; what it finds and does goes to stdout, refusals and errors to stderr. Its
+commands, options, exit codes and that prefix change incompatibly only with a major version, so a
+build script can rely on them.
+
 ## Claude Code plugin (optional)
 
 The repository is also a Claude Code plugin, which teaches an agent to drive the mailbox with
@@ -203,7 +260,7 @@ publishes it with the other DCS plugins, with `/plugin marketplace add MacFloren
 then `/plugin install dcs-hotload@dcs-agent-skills`.
 Then ask Claude to set hotload up in a mission folder: it deploys the tool, checks
 `MissionScripting.lua` and adds the boot trigger to the `.miz`, asking before each change outside
-the mission folder. It needs Python 3.
+the mission folder. It needs Python 3.8 or later.
 
 ## Development
 
