@@ -52,14 +52,13 @@ Scripts can wait in sim time. No external executable.
    Hotload = Hotload or {}; Hotload.root = p; f()
    ```
 
-   Where the folder does not exist, as on a player's machine, the mission only logs a
-   `HOTLOAD: not booted:` line in `dcs.log` and shows nothing; a bare `dofile` raises a script
-   error there instead. The setup script sees this trigger, and a bare `dofile` in a trigger or in
-   a script the `.miz` embeds; `boot-path` works only on this trigger, and a boot it cannot see,
-   such as a line in a script read from disk, makes `status` report the mission as not set up. In
-   a copy you share,
-   emptying the path (`boot-path --clear`, or `BASE_HOTLOAD_PATH = [[]]` by hand) is good
-   practice: the file then names no local folder.
+   Where the folder does not exist, as on a player's machine, the mission writes a
+   `HOTLOAD: not booted:` line to `dcs.log` and runs on, with no error on screen; a bare `dofile`
+   raises a script error there instead. The setup script sees this trigger, and a bare `dofile` in
+   a trigger or in a script the `.miz` embeds; `boot-path` works only on this trigger, and a boot
+   it cannot see, such as a line in a script read from disk, makes `status` report the mission as
+   not set up. In a copy you share, emptying the path (`boot-path --clear`, or
+   `BASE_HOTLOAD_PATH = [[]]` by hand) is good practice: the file then names no local folder.
 
 4. `dcs-hotload <version> ready` shows on screen (and `HOTLOAD: ready` in `dcs.log`); open
    **F10 → Hotload**.
@@ -238,8 +237,8 @@ python dcs-hotload/bin/hotload-setup.py <command> [options]
 | `unlock` | `--dcs DCS`, required | Comments out `sanitizeModule('io')` and `sanitizeModule('lfs')` in the install's `Scripts/MissionScripting.lua`, the edit of *Setup* step 2, and keeps the original as `MissionScripting.lua.bak`. |
 | `patch-miz` | | Adds the trigger of *Setup* step 3 to the `.miz`, pointing at this copy, and keeps the original as `<mission>.miz.bak`. A boot of another folder, or whose path is cleared, is pointed at this copy instead, and the output says what it was. A `.miz` that already boots this copy is left as it is. |
 | `boot-path` | | Shows the folder the trigger points at. |
-| | `--clear` | Empties it, a step for a build that makes a copy to share: the mission then only logs where it starts. |
-| | `--set DIR` | Points it at `DIR`, a folder holding `dcs-hotload.lua`. |
+| | `--clear` | Empties it, a step for a build that makes a copy to share: wherever it starts, the mission then writes a `HOTLOAD: not booted:` line to `dcs.log` and runs on, with no error on screen. |
+| | `--set [DIR]` | Points it at `DIR`, a folder holding `dcs-hotload.lua`, or at this copy without `DIR`. |
 
 - `--miz FILE`, for every command but `unlock`, names the `.miz` when it is not the only one next
   to the copy. A build that writes the `.miz` elsewhere clears it with
@@ -247,8 +246,8 @@ python dcs-hotload/bin/hotload-setup.py <command> [options]
 - `DCS` is the DCS World folder, the one holding `Scripts/MissionScripting.lua`: nothing guesses
   it.
 
-It exits 0 done or nothing to do, 1 failed or refused, 2 not set up (`status` only), 3 usage. Apart from `--help`, each line it prints starts with
-`hotload-setup:`; what it finds and does goes to stdout, refusals and errors to stderr. Its
+It exits 0 done or nothing to do, 1 failed or refused, 2 not set up (`status` only), 3 usage.
+Apart from `--help`, each line it prints starts with `hotload-setup:`; what it finds and does goes to stdout, refusals and errors to stderr. Its
 commands, options, exit codes and that prefix change incompatibly only with a major version, so a
 build script can rely on them.
 

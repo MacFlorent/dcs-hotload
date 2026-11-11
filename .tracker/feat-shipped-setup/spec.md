@@ -1,6 +1,6 @@
 # Ship the setup script with hotload
 
-Status: in-progress
+Status: done
 
 Takes up the idea *Ship `hotload-setup.py` where a build script can find it*.
 
@@ -48,7 +48,7 @@ It stands on its own: it reads nothing outside its copy, and needs no plugin, re
 python dcs-hotload/bin/hotload-setup.py status    [--miz FILE] [--dcs DCS]
 python dcs-hotload/bin/hotload-setup.py unlock    --dcs DCS
 python dcs-hotload/bin/hotload-setup.py patch-miz [--miz FILE]
-python dcs-hotload/bin/hotload-setup.py boot-path [--miz FILE] [--set DIR | --clear]
+python dcs-hotload/bin/hotload-setup.py boot-path [--miz FILE] [--set [DIR] | --clear]
 ```
 
 - `status`: this copy's version; whether the mailbox is on (reported, not counted in the exit
@@ -58,8 +58,9 @@ python dcs-hotload/bin/hotload-setup.py boot-path [--miz FILE] [--set DIR | --cl
 - `unlock`: makes the edit, with no `--yes`; it says what the edit means once done.
 - `patch-miz`: adds the boot trigger pointing at this copy, or points an existing boot at it.
   `--mission` and `--retarget` go: the folder written is always the copy's own.
-- `boot-path`: unchanged, except that the `.miz` is found as above. `--set DIR` still accepts any
-  folder holding `dcs-hotload.lua`.
+- `boot-path`: the `.miz` is found as above. `--set DIR` still accepts any folder holding
+  `dcs-hotload.lua`, and `--set` without `DIR` points the path back at this copy, as after a
+  `--clear`.
 
 The command names stay: they are documented in released versions.
 

@@ -10,6 +10,7 @@ import contextlib
 import importlib.util
 import io
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -593,6 +594,25 @@ class Errors(Mission):
         self.assertIn("patch-miz", out)
         self.assertNotIn("zip of Lua tables", out)
 
+    def test_help_lists_each_command_on_one_line(self):
+        code, out, err = self.run_main("--help")
+        for command in ("status", "unlock", "patch-miz", "boot-path"):
+            lines = [line for line in out.splitlines() if line.strip().startswith(command + " ")]
+            self.assertEqual(len(lines), 1, (command, out))
+        self.assertIn("Exit codes", out)
+        self.assertNotIn("compiled trigger", out)
+
+    def test_a_command_help_gives_its_details_and_options(self):
+        for command, details in (("status", "--dcs"), ("unlock", "MissionScripting.lua.bak"),
+                                 ("patch-miz", ".bak"), ("boot-path", "compiled trigger")):
+            code, out, err = self.run_main(command, "--help")
+            self.assertEqual(code, setup.OK, command)
+            self.assertIn(details, out, command)
+            self.assertIn("Exit codes", out, command)
+        code, out, err = self.run_main("boot-path", "--help")
+        for option in ("--miz FILE", "--set [DIR]", "--clear"):
+            self.assertRegex(out, re.escape(option) + r"\s+\S", option)   # each option has its help
+
 
 # ── Showing, setting or clearing the boot path ──────────────────────────────────────────────────
 
@@ -640,6 +660,20 @@ class BootPath(Mission):
         for name in before:
             if name != "mission":
                 self.assertEqual(after[name], before[name], name)
+
+    def test_clear_says_what_the_mission_then_does(self):
+        code, out = self.run_cmd("--clear")
+        self.assertIn("'HOTLOAD: not booted' line to dcs.log", out)
+        self.assertIn("no error on screen", out)
+
+    def test_set_without_a_folder_points_at_this_copy(self):
+        self.run_cmd("--clear")
+        code, out = self.run_cmd("--set")
+        self.assertEqual(code, setup.OK)
+        found = setup.find_boot(setup.Miz.read(self.miz))
+        self.assertTrue(setup.same_path(found[0].path, str(self.copy / "dcs-hotload.lua")))
+        shown, compiled = self.path_texts()
+        self.assertIn(setup.lua_quote(shown), compiled)
 
     def test_clearing_a_cleared_path_writes_nothing(self):
         self.run_cmd("--clear")
@@ -859,7 +893,13 @@ class Status(Mission):
     def test_a_cleared_path_is_not_set_up(self):
         code, out = self.status_of("")
         self.assertEqual(code, setup.NOT_SET_UP)
-        self.assertIn("boot path is cleared", out)
+        self.assertIn("m.miz: its boot path is cleared (trigger 1): run patch-miz", out)
+
+    def test_a_boot_of_another_folder_says_it_is_not_this_copy(self):
+        code, out = self.status_of(r"C:\old\dcs-hotload")
+        self.assertEqual(code, setup.NOT_SET_UP)
+        self.assertIn(r"m.miz loads C:\old\dcs-hotload\dcs-hotload.lua (trigger 1), not this copy: "
+                      "run patch-miz", out)
 
     def test_an_unguarded_boot_is_set_up_and_said_so(self):
         setup.main(["unlock", "--dcs", str(self.dcs)])

@@ -12,7 +12,8 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
   `.miz` next to that copy; `--miz FILE` names another. `patch-miz` and `boot-path` take `--miz`
   instead of a file argument, `status` and `patch-miz` no longer take `--mission`, `unlock` no
   longer takes `--yes` and `patch-miz` no longer takes `--retarget`: each makes its change, then
-  says what it was. Exit 2 now means only that `status` found the mission not set up. A build
+  says what it was. `boot-path --set` without a folder points the mission back at this copy, as
+  after a `--clear`. Exit 2 now means only that `status` found the mission not set up. A build
   script that looked for the script in the plugin cache now calls the mission's
   `dcs-hotload/bin/hotload-setup.py`. Its command line, exit codes and output prefix are now a
   public interface, changed incompatibly only with a major version.
