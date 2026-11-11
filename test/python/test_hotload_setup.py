@@ -596,6 +596,7 @@ class Errors(Mission):
 
     def test_help_lists_each_command_on_one_line(self):
         code, out, err = self.run_main("--help")
+        self.assertIn("<command>", out.splitlines()[0])
         for command in ("status", "unlock", "patch-miz", "boot-path"):
             lines = [line for line in out.splitlines() if line.strip().startswith(command + " ")]
             self.assertEqual(len(lines), 1, (command, out))
@@ -607,6 +608,7 @@ class Errors(Mission):
                                  ("patch-miz", ".bak"), ("boot-path", "compiled trigger")):
             code, out, err = self.run_main(command, "--help")
             self.assertEqual(code, setup.OK, command)
+            self.assertTrue(out.startswith(f"usage: hotload-setup.py {command} [-h]"), out)
             self.assertIn(details, out, command)
             self.assertIn("Exit codes", out, command)
         code, out, err = self.run_main("boot-path", "--help")

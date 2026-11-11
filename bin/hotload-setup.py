@@ -693,8 +693,16 @@ that already boots this copy is left alone."""
 
 BOOT_PATH = """\
 Without an option, shows the folder BASE_HOTLOAD_PATH names in the trigger patch-miz writes.
-Run --clear on a copy that leaves this machine, and --set to point it back at this copy. Refuses a mission without exactly one
-BASE_HOTLOAD_PATH assignment, or whose compiled trigger does not hold it once."""
+Run --clear on a copy that leaves this machine, and --set to point it back at this copy. Refuses
+a mission without exactly one BASE_HOTLOAD_PATH assignment, or whose compiled trigger does not
+hold it once."""
+
+COMMANDS = {    # name: (summary, details)
+    "status": ("Show what is missing", STATUS),
+    "unlock": ("Unlock io and lfs in DCS's MissionScripting.lua", UNLOCK),
+    "patch-miz": ("Make the .miz load this copy", PATCH_MIZ),
+    "boot-path": ("Show, set or clear the folder the .miz loads hotload from", BOOT_PATH),
+}
 
 
 def main(argv=None, copy=COPY):
@@ -702,22 +710,26 @@ def main(argv=None, copy=COPY):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(errors="backslashreplace")
     raw = argparse.RawDescriptionHelpFormatter
-    p = ArgParser(prog="hotload-setup.py", formatter_class=raw, epilog=EPILOG,
-                  description="Set dcs-hotload up in a DCS mission folder.")
-    sub = p.add_subparsers(dest="cmd", required=True, title="commands", metavar="<command>")
+    # The command list is written out here: argparse before 3.12 wraps longer command names.
+    listing = "\n".join(f"  {name:<11}{summary}" for name, (summary, _) in COMMANDS.items())
+    p = ArgParser(prog="hotload-setup.py", usage="%(prog)s [-h] <command> [options]",
+                  formatter_class=raw, epilog=EPILOG,
+                  description=f"Set dcs-hotload up in a DCS mission folder.\n\ncommands:\n{listing}")
+    sub = p.add_subparsers(dest="cmd", required=True, metavar="<command>", help=argparse.SUPPRESS)
 
-    def command(name, summary, details):
-        return sub.add_parser(name, help=summary, description=f"{summary}.\n\n{details}",
+    def command(name):
+        summary, details = COMMANDS[name]
+        return sub.add_parser(name, prog=f"{p.prog} {name}", description=f"{summary}.\n\n{details}",
                               epilog=EPILOG, formatter_class=raw)
 
-    s = command("status", "Show what is missing", STATUS)
+    s = command("status")
     s.add_argument("--miz", metavar="FILE", help=MIZ_HELP)
     s.add_argument("--dcs", metavar="DCS", help="also check that io and lfs are unlocked")
-    u = command("unlock", "Unlock io and lfs in DCS's MissionScripting.lua", UNLOCK)
+    u = command("unlock")
     u.add_argument("--dcs", metavar="DCS", required=True, help="the DCS World folder")
-    m = command("patch-miz", "Make the .miz load this copy", PATCH_MIZ)
+    m = command("patch-miz")
     m.add_argument("--miz", metavar="FILE", help=MIZ_HELP)
-    b = command("boot-path", "Show, set or clear the folder the .miz loads hotload from", BOOT_PATH)
+    b = command("boot-path")
     b.add_argument("--miz", metavar="FILE", help=MIZ_HELP)
     change = b.add_mutually_exclusive_group()
     change.add_argument("--set", metavar="DIR", nargs="?", const=str(copy),
