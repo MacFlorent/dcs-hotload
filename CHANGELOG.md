@@ -10,8 +10,10 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
   or retargets the boot trigger (`patch-miz`) and shows, sets or clears the boot path
   (`boot-path`), without Claude Code. It works on the copy it is in and on the mission's only
   `.miz` next to that copy; `--miz FILE` names another. `patch-miz` and `boot-path` take `--miz`
-  instead of a file argument, and `status` and `patch-miz` no longer take `--mission`. A build script that
-  looked for the script in the plugin cache now calls the mission's
+  instead of a file argument, `status` and `patch-miz` no longer take `--mission`, `unlock` no
+  longer takes `--yes` and `patch-miz` no longer takes `--retarget`: each makes its change, then
+  says what it was. Exit 2 now means only that `status` found the mission not set up. A build
+  script that looked for the script in the plugin cache now calls the mission's
   `dcs-hotload/bin/hotload-setup.py`. Its command line, exit codes and output prefix are now a
   public interface, changed incompatibly only with a major version.
 - **The setup script reports problems in one line**: a missing or unreadable `.miz`, a folder it

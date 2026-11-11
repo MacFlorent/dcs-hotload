@@ -17,7 +17,7 @@ Scripts can wait in sim time. No external executable.
    it (see *Setup script*):
 
    ```bash
-   python dcs-hotload/bin/hotload-setup.py unlock --dcs "<DCS install>" --yes
+   python dcs-hotload/bin/hotload-setup.py unlock --dcs "<DCS install>"
    ```
 
    By hand: in `<DCS install>\Scripts\MissionScripting.lua`, comment out `sanitizeModule('io')`
@@ -223,35 +223,34 @@ it is in and on the mission next to it:
 
 ```
 <mission folder>/
-  <mission>.miz        the only .miz; --miz FILE names it when there are several or none
+  <mission>.miz        the only .miz here; --miz FILE names one kept elsewhere, or one of several
   dcs-hotload/         the copy holding this script
 ```
 
 ```bash
-python dcs-hotload/bin/hotload-setup.py status    [--miz FILE] [--dcs DCS]    # what is missing
-python dcs-hotload/bin/hotload-setup.py unlock    --dcs DCS [--yes]
-python dcs-hotload/bin/hotload-setup.py patch-miz [--miz FILE] [--retarget]
-python dcs-hotload/bin/hotload-setup.py boot-path [--miz FILE] [--set DIR | --clear]
+python dcs-hotload/bin/hotload-setup.py <command> [options]
 ```
 
+| Command | Option | What it does |
+|---|---|---|
+| `status` | | Reports the copy's version, whether the mailbox is on, and what the `.miz` boots. Exits 0 when the `.miz` boots this copy and nothing checked is locked, 2 when something is missing; the mailbox is optional and does not count. |
+| | `--dcs DCS` | Also checks that `io` and `lfs` are unlocked in that install. |
+| `unlock` | `--dcs DCS`, required | Comments out `sanitizeModule('io')` and `sanitizeModule('lfs')` in the install's `Scripts/MissionScripting.lua`, the edit of *Setup* step 2, and keeps the original as `MissionScripting.lua.bak`. |
+| `patch-miz` | | Adds the trigger of *Setup* step 3 to the `.miz`, pointing at this copy, and keeps the original as `<mission>.miz.bak`. A boot of another folder, or whose path is cleared, is pointed at this copy instead, and the output says what it was. A `.miz` that already boots this copy is left as it is. |
+| `boot-path` | | Shows the folder the trigger points at. |
+| | `--clear` | Empties it, a step for a build that makes a copy to share: the mission then only logs where it starts. |
+| | `--set DIR` | Points it at `DIR`, a folder holding `dcs-hotload.lua`. |
+
+- `--miz FILE`, for every command but `unlock`, names the `.miz` when it is not the only one next
+  to the copy. A build that writes the `.miz` elsewhere clears it with
+  `python dcs-hotload/bin/hotload-setup.py boot-path --miz build/<mission>.miz --clear`.
 - `DCS` is the DCS World folder, the one holding `Scripts/MissionScripting.lua`: nothing guesses
   it.
-- `status` reports the copy's version, whether the mailbox is on, whether the `.miz` boots this
-  copy and, with `--dcs`, whether `io` and `lfs` are unlocked. It exits 0 when the `.miz` boots
-  this copy and nothing checked is locked, 2 when something is missing; the mailbox is optional
-  and does not count.
-- `unlock` changes nothing without `--yes`, and keeps the original as `MissionScripting.lua.bak`.
-- `patch-miz` keeps the original as `<mission>.miz.bak`. A boot that points at another folder, or
-  whose path is cleared, is rewritten only with `--retarget`.
-- `boot-path` shows the folder; `--clear` empties it, a step for a build that makes a copy to
-  share; `--set DIR` points it at a folder holding `dcs-hotload.lua`. A build that writes the
-  `.miz` elsewhere names it:
-  `python dcs-hotload/bin/hotload-setup.py boot-path --miz build/<mission>.miz --clear`.
 
-It exits 0 done or nothing to do, 1 failed or refused, 2 a decision is needed (rerun with the flag
-the message names), 3 usage. Apart from `--help`, each line it prints starts with
-`hotload-setup:`; what it finds and does goes to stdout, refusals and errors to stderr. Its commands, options, exit codes and that
-prefix change incompatibly only with a major version, so a build script can rely on them.
+It exits 0 done or nothing to do, 1 failed or refused, 2 not set up (`status` only), 3 usage. Apart from `--help`, each line it prints starts with
+`hotload-setup:`; what it finds and does goes to stdout, refusals and errors to stderr. Its
+commands, options, exit codes and that prefix change incompatibly only with a major version, so a
+build script can rely on them.
 
 ## Claude Code plugin (optional)
 

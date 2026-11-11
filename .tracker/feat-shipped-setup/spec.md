@@ -46,8 +46,8 @@ It stands on its own: it reads nothing outside its copy, and needs no plugin, re
 
 ```
 python dcs-hotload/bin/hotload-setup.py status    [--miz FILE] [--dcs DCS]
-python dcs-hotload/bin/hotload-setup.py unlock    --dcs DCS [--yes]
-python dcs-hotload/bin/hotload-setup.py patch-miz [--miz FILE] [--retarget]
+python dcs-hotload/bin/hotload-setup.py unlock    --dcs DCS
+python dcs-hotload/bin/hotload-setup.py patch-miz [--miz FILE]
 python dcs-hotload/bin/hotload-setup.py boot-path [--miz FILE] [--set DIR | --clear]
 ```
 
@@ -55,9 +55,9 @@ python dcs-hotload/bin/hotload-setup.py boot-path [--miz FILE] [--set DIR | --cl
   code); whether the `.miz` boots this copy (or another folder, a cleared path, a bare `dofile`,
   nothing); with `--dcs`, whether `io` and `lfs` are unlocked. Without `--dcs` the unlock is
   reported as not checked.
-- `unlock`: unchanged.
-- `patch-miz`: adds the boot trigger pointing at this copy, or with `--retarget` points an existing
-  boot at it. `--mission` goes: the folder written is always the copy's own.
+- `unlock`: makes the edit, with no `--yes`; it says what the edit means once done.
+- `patch-miz`: adds the boot trigger pointing at this copy, or points an existing boot at it.
+  `--mission` and `--retarget` go: the folder written is always the copy's own.
 - `boot-path`: unchanged, except that the `.miz` is found as above. `--set DIR` still accepts any
   folder holding `dcs-hotload.lua`.
 
@@ -80,7 +80,7 @@ and a copy's.
 ```
 python <skill>/scripts/hotload-deploy.py --mission DIR [--update]
 python DIR/dcs-hotload/bin/hotload-setup.py status --dcs DCS
-python DIR/dcs-hotload/bin/hotload-setup.py unlock --dcs DCS     # once the user agrees: --yes
+python DIR/dcs-hotload/bin/hotload-setup.py unlock --dcs DCS     # once the user agrees
 python DIR/dcs-hotload/bin/hotload-setup.py patch-miz
 ```
 
@@ -107,10 +107,10 @@ the first release that ships it:
   `reconfigure(errors="backslashreplace")` on stdout and stderr.
 - **Streams, as `bin/hotload.py` does**: results (`status` lines, the path `boot-path` shows) on
   stdout; refusals, failures and the decision prompts on stderr. Same `hotload-setup:` prefix.
-- **Exit codes**: 0 done or nothing to do, 1 failed or refused, 2 a decision is needed, 3 usage.
+- **Exit codes**: 0 done or nothing to do, 1 failed or refused, 2 not set up (`status`), 3 usage.
   `status` gives 1, not 2, for a `--dcs` that is not a DCS install.
-- **Prompts addressed to whoever runs it**: "rerun with --yes to make this change", not "once the
-  user agrees". The rule to ask first is the skill's.
+- **Messages addressed to whoever runs it**, never "once the user agrees". The rule to ask first
+  is the skill's.
 - **`--help`** is usage only. The paragraph on the `.miz` writer becomes a comment.
 - **Python 3.8 or later**, as the client.
 
@@ -121,7 +121,7 @@ the first release that ships it:
   assumes, its commands, exit codes, and clearing the path in a build. The command line is stated
   as a public interface.
 - **The skill**: `setup.md` keeps what is the agent's to do: deploy first, then the mission's copy;
-  ask before `--yes`, `--update`, `--retarget`; what exit 2 means. Usage points at the README.
+  ask before `--update`, `unlock`, and `patch-miz` over a boot of another folder. Usage points at the README.
 - **CONTRIBUTING**: layout table, the test table, the versioning paragraph (the script's command
   line and exit codes join the mailbox as a public interface).
 - **CLAUDE.md**: the *Never* line on incompatible changes names the setup script's command line;
@@ -140,6 +140,15 @@ the first release that ships it:
 
 ## Decisions
 
+- **`patch-miz` takes no `--retarget`.** Running it is the decision to boot this copy: a boot of
+  another folder, or a cleared one, is pointed at it and the output says what it was. The agent
+  asks first when `status` reports such a boot. With it gone, exit 2 has one meaning in the
+  shipped script: `status`'s "not set up". Turned down: keeping `--retarget`, a second step for a
+  decision already made.
+- **`unlock` takes no `--yes`.** Whoever types `unlock --dcs <their install>` has decided; the
+  `--dcs` path is theirs, so the command cannot be pasted from a guide unchanged. The agent asks
+  before running it, by the skill's rule. Turned down: keeping `--yes`, a second step for a
+  decision already made.
 - **The script acts on its own copy, not on the current folder.** Turned down: `--mission`
   defaulting to `.`, which points a mission at whatever folder the command was run from.
 - **Deploy stays in the plugin.** A copy cannot deploy itself, and someone with the release zip

@@ -1,17 +1,15 @@
 # Setting dcs-hotload up in a mission
 
-Two scripts, both Python 3.8+, run from the mission folder: the folder that holds the `.miz` and
-holds, or will hold, `dcs-hotload/`.
+Run everything from the mission folder: the folder that holds the `.miz` and holds, or will hold,
+`dcs-hotload/`. Deploy with this skill's script; every later step uses the mission's copy of the
+setup script, `dcs-hotload/bin/hotload-setup.py`. What it does, command by command, is in the
+mission's `dcs-hotload/README.md`, under *Setup* and *Setup script*. **Run the mission's copy,
+never the one in the plugin's own folder**: `patch-miz` points the mission at the copy it runs
+from.
 
-- `scripts/hotload-deploy.py`, in this skill's folder, copies the tool into the mission.
-- `dcs-hotload/bin/hotload-setup.py`, the mission's copy of the setup script, does the rest. Its
-  commands are in the README's *Setup script* (`dcs-hotload/README.md`). **Run the mission's copy,
-  never the one in the plugin's own folder**: `patch-miz` points the mission at the copy it runs
-  from.
-
-Every step checks first and changes only what is missing, so running it again is harmless. Exit 2
-means a decision is needed: **tell the user what the message says and ask; rerun with the flag it
-names only once they agree.**
+Each step checks first and changes only what is missing. Three changes are the user's to decide:
+updating an older copy, unlocking DCS, and repointing a mission that boots another folder. **Say
+what the change does and ask; run it only once they agree.**
 
 ## 1. Deploy the tool
 
@@ -19,23 +17,19 @@ names only once they agree.**
 python <this skill's folder>/scripts/hotload-deploy.py
 ```
 
-Copies the tool into `dcs-hotload/` — the release package's files, nothing else — and creates any
-missing `user-lib/`, `user-f10/`, `user-inbox/` and `user-outbox/` (the last two turn the mailbox
-on), even over a copy that is already current. Never touches what the `user-*` folders hold; over
-a `user-scripts/` folder, it says to rename it to `user-f10/`.
+Copies the release package's files into `dcs-hotload/`, and creates any missing `user-lib/`,
+`user-f10/`, `user-inbox/` and `user-outbox/`, even over a current copy. It never touches what the
+`user-*` folders hold; over a `user-scripts/` folder, it says to rename it to `user-f10/`.
 
-A mission already holding an **older** version returns 2: a mission keeps the version it was
-tested with. Updating is `--update`, after asking. A **newer** version is left alone. A copy
-without `bin/hotload-setup.py` (3.0.1 and older) cannot do the steps below: setting the mission up
-needs `--update`, or the README's manual steps.
+Over an **older** copy it exits 2: a mission keeps the version it was tested with, so ask before
+`--update`. A **newer** copy is left alone. A copy without `bin/hotload-setup.py` (3.0.1 and
+older) cannot do the steps below: the mission then needs `--update`, or the README's manual steps.
 
-Then, to see what is still missing:
+Then see what is missing, with `DCS` found as `SKILL.md` says:
 
 ```bash
 python dcs-hotload/bin/hotload-setup.py status --dcs DCS
 ```
-
-`DCS` is the DCS World folder, found as `SKILL.md` says.
 
 ## 2. Unlock the scripting environment
 
@@ -43,11 +37,9 @@ python dcs-hotload/bin/hotload-setup.py status --dcs DCS
 python dcs-hotload/bin/hotload-setup.py unlock --dcs DCS
 ```
 
-hotload needs `io` and `lfs`, which DCS's `Scripts/MissionScripting.lua` removes from missions.
-The script returns 2 while they are locked. **Ask the user first**, with the message's reasons:
-the edit is install-wide, gives every mission file access (multiplayer ones included), affects
-multiplayer integrity checks, and DCS updates revert it. Then `--yes` makes the edit. Under
-`Program Files`, writing may need an administrator; the message says so.
+Only when `status` reports `io` or `lfs` locked, and only after asking, with the reasons the
+README's *Setup* step 2 gives. Under `Program Files`, writing may need an administrator; the
+message says so.
 
 ## 3. Make the `.miz` load it
 
@@ -55,16 +47,10 @@ multiplayer integrity checks, and DCS updates revert it. Then `--yes` makes the 
 python dcs-hotload/bin/hotload-setup.py patch-miz
 ```
 
-Adds the boot trigger, pointing at the mission's `dcs-hotload/`. Nothing else in the file changes.
-Where the folder is missing, the mission only logs `HOTLOAD: not booted:` in `dcs.log`. With
-several `.miz` in the folder, ask which one, and pass `--miz FILE`.
-
-- A boot already loading this mission's copy, from a trigger or from a script the mission
-  embeds: nothing to do. A bare `dofile` is reported as such, since it raises a script error
-  where the file is missing; it stays until the user removes it, and `patch-miz` then adds the
-  trigger.
-- A boot loading **another folder's** copy (a mission moved or copied), or whose path is
-  cleared, returns 2: say which, and `--retarget` rewrites it after asking.
+- With several `.miz` in the folder, ask which one, and pass `--miz FILE`.
+- When `status` reports a boot of **another folder** (a mission moved or copied, or pointed at a
+  shared copy on purpose) or a cleared path, ask first: `patch-miz` points it at this copy.
+- A bare `dofile` is reported as such; it stays until the user removes it.
 
 Then **the user re-opens the mission from the Mission menu**: Restart replays the copy loaded at
 launch, not the patched file.
@@ -85,12 +71,6 @@ When DCS is not running, say that this step is still to do.
 
 ## Sharing the mission
 
-The trigger `patch-miz` adds is safe to share: where its folder is missing, which is every machine
-but this one, the mission only logs a line. A bare `dofile` is not: it raises a script error
-there.
-
-Emptying the path in a copy you share is still good practice: the file then names no folder of
-this machine, and the mission does not look for hotload anywhere, even where that folder happens
-to exist. `boot-path --clear` empties it, `boot-path` shows it, `boot-path --set dcs-hotload`
-gives it back for testing here. A mission rebuilt by a build tool keeps the trigger as that tool
-keeps any other; clearing then fits as a step after each build that makes a copy to share.
+The trigger is safe to share; clearing its path in a copy that leaves this machine is good
+practice. Both are in the README's *Setup* step 3; the command is `boot-path --clear`, and a build
+that makes a copy to share runs it after each build.

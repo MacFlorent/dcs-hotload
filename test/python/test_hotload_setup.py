@@ -384,26 +384,36 @@ class BootLine(Mission):
         self.assertNotIn('["', text.split("trigrules", 1)[0])
         self.assertEqual(len(setup.find_boot(setup.Miz.read(self.miz))), 1)
 
-    def test_patch_command_asks_before_retargeting(self):
+    def test_patch_command_points_a_boot_of_another_folder_at_this_copy(self):
         miz = setup.Miz.read(self.miz)
         setup.add_boot(miz, r"C:\old\dcs-hotload")
         miz.write(self.miz)
         code, out, err = self.run_main("patch-miz")
-        self.assertEqual(code, setup.DECIDE)
-        self.assertIn("--retarget", err)
-        self.assertNotIn("the user", out + err)    # temp paths hold "Users", hence the lower case
-        self.assertEqual(self.run_main("patch-miz", "--retarget")[0], setup.OK)
-        self.assertTrue(setup.same_path(setup.find_boot(setup.Miz.read(self.miz))[0].path,
-                                        str(self.copy / "dcs-hotload.lua")))
+        self.assertEqual(code, setup.OK)
+        self.assertIn(r"C:\old\dcs-hotload", out)          # says what it replaced
+        found = setup.find_boot(setup.Miz.read(self.miz))
+        self.assertEqual(len(found), 1)
+        self.assertTrue(setup.same_path(found[0].path, str(self.copy / "dcs-hotload.lua")))
+        self.assertTrue((self.dir / "m.miz.bak").exists())
 
-    def test_patch_command_asks_before_setting_a_cleared_path(self):
+    def test_patch_command_sets_a_cleared_path(self):
         miz = setup.Miz.read(self.miz)
         setup.add_boot(miz, "")
         miz.write(self.miz)
-        self.assertEqual(self.run_main("patch-miz")[0], setup.DECIDE)
-        self.assertEqual(self.run_main("patch-miz", "--retarget")[0], setup.OK)
+        code, out, err = self.run_main("patch-miz")
+        self.assertEqual(code, setup.OK)
+        self.assertIn("cleared", out)
         self.assertTrue(setup.same_path(setup.find_boot(setup.Miz.read(self.miz))[0].path,
                                         str(self.copy / "dcs-hotload.lua")))
+
+    def test_patch_command_keeps_an_unguarded_boot_of_another_folder_unguarded_and_says_so(self):
+        self.unguarded(r"C:\old\dcs-hotload\dcs-hotload.lua").write(self.miz)
+        code, out, err = self.run_main("patch-miz")
+        self.assertEqual(code, setup.OK)
+        found = setup.find_boot(setup.Miz.read(self.miz))
+        self.assertFalse(found[0].guarded)
+        self.assertTrue(setup.same_path(found[0].path, str(self.copy / "dcs-hotload.lua")))
+        self.assertIn("bare dofile", err)
 
     def test_patch_command_leaves_an_unguarded_boot_of_this_mission_alone(self):
         lua = str((self.copy / "dcs-hotload.lua").resolve())
@@ -545,7 +555,7 @@ class Errors(Mission):
             self.assertNotEqual(self.run_main("status")[0], setup.FAIL)
             self.assertEqual(self.run_main("boot-path")[0], setup.OK)
             self.assertEqual(self.run_main("boot-path", "--clear")[0], setup.OK)
-            self.assertEqual(self.run_main("unlock", "--dcs", str(dcs), "--yes")[0], setup.OK)
+            self.assertEqual(self.run_main("unlock", "--dcs", str(dcs))[0], setup.OK)
             fresh = self.dir / "fresh.miz"          # adding a trigger writes the guard; retargeting does not
             shutil.copy(FIXTURE, fresh)
             self.fails("patch-miz", "--miz", str(fresh), mention="boot-guard.lua is missing")
@@ -780,12 +790,20 @@ class Unlock(Scratch):
     def test_locked_modules(self):
         self.assertEqual(setup.locked_modules(self.file), ["io", "lfs"])
 
-    def test_asks_first(self):
-        self.assertEqual(setup.main(["unlock", "--dcs", str(self.dir)]), setup.DECIDE)
+    def test_says_what_the_edit_means(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(setup.main(["unlock", "--dcs", str(self.dir)]), setup.OK)
+        self.assertIn("install-wide", out.getvalue())
+        self.assertIn("DCS updates revert it", out.getvalue())
+
+    def test_takes_no_confirmation_flag(self):
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(setup.main(["unlock", "--dcs", str(self.dir), "--yes"]), setup.USAGE)
         self.assertEqual(self.file.read_text(encoding="utf-8"), STOCK)
 
     def test_unlocks_io_and_lfs_only_and_keeps_the_original(self):
-        self.assertEqual(setup.main(["unlock", "--dcs", str(self.dir), "--yes"]), setup.OK)
+        self.assertEqual(setup.main(["unlock", "--dcs", str(self.dir)]), setup.OK)
         text = self.file.read_text(encoding="utf-8")
         self.assertIn("\t--sanitizeModule('io')", text)
         self.assertIn("\t--sanitizeModule('lfs')", text)
@@ -795,14 +813,14 @@ class Unlock(Scratch):
 
     def test_needs_the_install(self):
         with mock.patch.dict(os.environ, {"DCS_INSTALL": str(self.dir)}):
-            self.assertEqual(setup.main(["unlock", "--yes"]), setup.USAGE)
+            self.assertEqual(setup.main(["unlock"]), setup.USAGE)
         self.assertEqual(setup.locked_modules(self.file), ["io", "lfs"])
 
     def test_refuses_a_folder_that_is_not_an_install(self):
-        self.assertEqual(setup.main(["unlock", "--dcs", str(self.dir / "Scripts"), "--yes"]), setup.FAIL)
+        self.assertEqual(setup.main(["unlock", "--dcs", str(self.dir / "Scripts")]), setup.FAIL)
 
     def test_unlocked_changes_nothing(self):
-        setup.main(["unlock", "--dcs", str(self.dir), "--yes"])
+        setup.main(["unlock", "--dcs", str(self.dir)])
         (self.dir / "Scripts" / "MissionScripting.lua.bak").unlink()
         self.assertEqual(setup.main(["unlock", "--dcs", str(self.dir)]), setup.OK)
         self.assertFalse((self.dir / "Scripts" / "MissionScripting.lua.bak").exists())
@@ -819,19 +837,19 @@ class Status(Mission):
         self.args = ["status", "--dcs", str(self.dcs)]
 
     def test_reports_what_is_missing(self):
-        self.assertEqual(self.run_main(*self.args)[0], setup.DECIDE)
+        self.assertEqual(self.run_main(*self.args)[0], setup.NOT_SET_UP)
 
     def test_names_the_copy_and_its_version(self):
         code, out, err = self.run_main(*self.args)
         self.assertIn(f"dcs-hotload 9.9.9 in {self.copy}", out)
 
     def test_all_set(self):
-        setup.main(["unlock", "--dcs", str(self.dcs), "--yes"])
+        setup.main(["unlock", "--dcs", str(self.dcs)])
         setup.main(["patch-miz"], copy=self.copy)
         self.assertEqual(self.run_main(*self.args)[0], setup.OK)
 
     def status_of(self, folder):
-        setup.main(["unlock", "--dcs", str(self.dcs), "--yes"])
+        setup.main(["unlock", "--dcs", str(self.dcs)])
         miz = setup.Miz.read(self.miz)
         setup.add_boot(miz, folder)
         miz.write(self.miz)
@@ -840,11 +858,11 @@ class Status(Mission):
 
     def test_a_cleared_path_is_not_set_up(self):
         code, out = self.status_of("")
-        self.assertEqual(code, setup.DECIDE)
+        self.assertEqual(code, setup.NOT_SET_UP)
         self.assertIn("boot path is cleared", out)
 
     def test_an_unguarded_boot_is_set_up_and_said_so(self):
-        setup.main(["unlock", "--dcs", str(self.dcs), "--yes"])
+        setup.main(["unlock", "--dcs", str(self.dcs)])
         lua = str((self.copy / "dcs-hotload.lua").resolve())
         miz = setup.Miz.read(self.miz)
         miz.entries["l10n/DEFAULT/boot.lua"] = f"dofile([[{lua}]])\n".encode("utf-8")
@@ -863,7 +881,7 @@ class Status(Mission):
         self.assertIn("not checked (pass --dcs)", out)
 
     def test_status_reports_the_mailbox_without_counting_it(self):
-        setup.main(["unlock", "--dcs", str(self.dcs), "--yes"])
+        setup.main(["unlock", "--dcs", str(self.dcs)])
         setup.main(["patch-miz"], copy=self.copy)
         code, out, err = self.run_main(*self.args)
         self.assertEqual(code, setup.OK)
@@ -883,7 +901,7 @@ class Status(Mission):
         miz.entries["l10n/DEFAULT/boot.lua"] = b"dofile([[D:\\elsewhere\\dcs-hotload.lua]])\n"
         miz.write(self.miz)
         code, out, err = self.run_main(*self.args)
-        self.assertEqual(code, setup.DECIDE)
+        self.assertEqual(code, setup.NOT_SET_UP)
         self.assertIn(r"C:\old\dcs-hotload", out)
         self.assertIn(r"D:\elsewhere\dcs-hotload.lua", out)
         self.assertIn("bare dofile", out)
@@ -891,6 +909,7 @@ class Status(Mission):
     def test_the_old_options_are_gone(self):
         self.assertEqual(self.run_main("patch-miz", str(self.miz))[0], setup.USAGE)
         self.assertEqual(self.run_main("patch-miz", "--mission", str(self.dir))[0], setup.USAGE)
+        self.assertEqual(self.run_main("patch-miz", "--retarget")[0], setup.USAGE)
 
 
 if __name__ == "__main__":
