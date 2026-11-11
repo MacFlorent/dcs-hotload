@@ -15,8 +15,9 @@ of `Hotload.version`; `CONTRIBUTING.md` says when an entry is due.
   says what it was. `boot-path --set` without a folder points the mission back at this copy, as
   after a `--clear`. Exit 2 now means only that `status` found the mission not set up. A build
   script that looked for the script in the plugin cache now calls the mission's
-  `dcs-hotload/bin/hotload-setup.py`. Its command line, exit codes and output prefix are now a
-  public interface, changed incompatibly only with a major version.
+  `dcs-hotload/bin/hotload-setup.py`. Until now its command line was the skill's own, not a
+  public interface; from this version its command line, exit codes and output prefix are one,
+  changed incompatibly only with a major version.
 - **The setup script reports problems in one line**: a missing or unreadable `.miz`, a folder it
   cannot write in, a file that is not UTF-8 or a missing `boot-guard.lua` end in a
   `hotload-setup:` line and exit 1, not a Python traceback. Refusals and errors go to stderr,
